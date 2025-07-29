@@ -120,10 +120,7 @@ const invoiceDateDisplay = document.getElementById('invoiceDate');
 const invoiceSubtotalDisplay = document.getElementById('invoiceSubtotal'); 
 const closeInvoiceButton = document.getElementById('closeInvoiceButton'); 
 
-// NEW: Burger Menu Elements
-const burgerMenuButton = document.getElementById('burgerMenuButton');
-const dropdownMenu = document.getElementById('dropdownMenu');
-const showOrdersMenuItem = document.getElementById('showOrdersMenuItem');
+
 
 
 // --- Asset Loading ---

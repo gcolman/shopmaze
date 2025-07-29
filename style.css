@@ -646,3 +646,281 @@ body {
     cursor: not-allowed;
 }
 
+/* Mobile Controls and Responsive Design */
+
+/* Mobile Controls Container */
+.mobile-controls {
+    display: none; /* Hidden by default, shown on mobile */
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 15;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.control-instructions {
+    text-align: center;
+    color: #fff;
+    font-size: 12px;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+/* D-Pad Layout */
+.dpad {
+    display: grid;
+    grid-template-rows: 60px 60px 60px;
+    grid-template-columns: 60px 20px 60px;
+    gap: 5px;
+    align-items: center;
+    justify-items: center;
+}
+
+.up-btn {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.middle-row {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.down-btn {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+.center-space {
+    width: 20px;
+    height: 60px;
+}
+
+/* Control Button Styling */
+.control-btn {
+    width: 60px;
+    height: 60px;
+    border: 3px solid #dc3545;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #fff, #f0f0f0);
+    color: #dc3545;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    outline: none;
+    box-shadow: 
+        0 4px 8px rgba(0,0,0,0.2),
+        inset 0 2px 4px rgba(255,255,255,0.8);
+    transition: all 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:active {
+    background: linear-gradient(145deg, #e0e0e0, #d0d0d0);
+    box-shadow: 
+        0 2px 4px rgba(0,0,0,0.3),
+        inset 0 1px 2px rgba(0,0,0,0.2);
+    transform: translateY(2px);
+}
+
+.control-btn:hover {
+    background: linear-gradient(145deg, #f8f8f8, #e8e8e8);
+    border-color: #c82333;
+}
+
+/* Responsive Design */
+
+/* Mobile Portrait */
+@media (max-width: 768px) {
+    body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    #game-container {
+        padding: 10px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Show mobile controls on small screens */
+    .mobile-controls {
+        display: block;
+    }
+
+    /* Adjust canvas for mobile */
+    #gameCanvas {
+        max-width: 100%;
+        height: auto;
+        border: 2px solid #333;
+    }
+
+    /* Adjust game info panel for mobile */
+    .game-info {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+
+    /* Stack red hat counters for mobile */
+    #redHatCounters {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .red-hat-icon {
+        width: 25px;
+        height: 25px;
+        margin: 2px;
+    }
+
+    /* Adjust buttons for mobile */
+    #checkoutButton, #restartButton {
+        padding: 12px 20px;
+        font-size: 16px;
+        margin: 5px;
+        min-height: 44px; /* Touch target size */
+    }
+
+    /* Adjust shopping basket for mobile */
+    #shoppingBasket {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .basket-item img {
+        width: 30px;
+        height: 30px;
+    }
+
+    /* Game message adjustments */
+    #gameMessage {
+        font-size: 14px;
+        padding: 8px;
+        text-align: center;
+    }
+
+    /* Invoice overlay mobile adjustments */
+    .invoice-box {
+        width: 95%;
+        height: 90%;
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .invoice-header h1 {
+        font-size: 1.4em;
+    }
+
+    /* Order confirmation mobile adjustments */
+    .order-confirmation-box {
+        width: 95%;
+        height: 85%;
+        padding: 15px;
+        font-size: 13px;
+    }
+
+    .order-header h1 {
+        font-size: 1.6em;
+    }
+
+    .order-button {
+        padding: 14px 16px;
+        font-size: 16px;
+        min-height: 44px;
+    }
+}
+
+/* Mobile Landscape */
+@media (max-width: 1024px) and (orientation: landscape) {
+    .mobile-controls {
+        display: block;
+    }
+
+    .dpad {
+        grid-template-rows: 50px 50px 50px;
+        grid-template-columns: 50px 15px 50px;
+    }
+
+    .control-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+
+    .center-space {
+        width: 15px;
+        height: 50px;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .mobile-controls {
+        display: block;
+        bottom: 30px;
+        right: 30px;
+    }
+
+    .control-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 28px;
+    }
+
+    .dpad {
+        grid-template-rows: 70px 70px 70px;
+        grid-template-columns: 70px 25px 70px;
+    }
+
+    .center-space {
+        width: 25px;
+        height: 70px;
+    }
+}
+
+/* Hide mobile controls on desktop */
+@media (min-width: 1025px) {
+    .mobile-controls {
+        display: none;
+    }
+}
+
+/* Touch feedback animations */
+@keyframes touchFeedback {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+.control-btn.touched {
+    animation: touchFeedback 0.1s ease;
+}
+
+/* Prevent text selection on mobile */
+.mobile-controls * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+

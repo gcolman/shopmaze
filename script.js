@@ -176,31 +176,33 @@ tShirtsAvailable.forEach(tShirt => {
 });
 
 
-// --- Keyboard Input Handling ---
-document.addEventListener('keydown', (e) => {
-    if (gameOver || player.isMoving || !gameActive) { // Block input if game is not active (invoice shown)
+// --- Player Movement Function (Shared between keyboard and mobile) ---
+function movePlayer(direction) {
+    if (gameOver || player.isMoving || !gameActive) {
         return;
     }
 
     let newGridX = player.gridX;
-    let newGridY = player.gridY; // Using Y for rows in 2D maze
+    let newGridY = player.gridY;
     let moved = false;
 
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') {
-        newGridY -= 1;
-        moved = true;
-    }
-    else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-        newGridY += 1;
-        moved = true;
-    }
-    else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
-        newGridX -= 1;
-        moved = true;
-    }
-    else if (e.code === 'KeyD' || e.code === 'ArrowRight') {
-        newGridX += 1;
-        moved = true;
+    switch(direction) {
+        case 'up':
+            newGridY -= 1;
+            moved = true;
+            break;
+        case 'down':
+            newGridY += 1;
+            moved = true;
+            break;
+        case 'left':
+            newGridX -= 1;
+            moved = true;
+            break;
+        case 'right':
+            newGridX += 1;
+            moved = true;
+            break;
     }
 
     if (!moved) {
@@ -213,20 +215,166 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    if (MAZE[newGridY][newGridX] === 1) { // Check Y first for row, then X for column
+    if (MAZE[newGridY][newGridX] === 1) {
         return; // It's a wall, cannot move
     }
 
     player.gridX = newGridX;
-    player.gridY = newGridY; // Update player's Y grid position for 2D
+    player.gridY = newGridY;
     player.targetX = newGridX * TILE_SIZE;
-    player.targetY = newGridY * TILE_SIZE; // Update player's Y target pixel for 2D
+    player.targetY = newGridY * TILE_SIZE;
     player.isMoving = true;
 
     if (gameMessageDisplay.textContent === "You hit the shop boundary!") {
         gameMessageDisplay.textContent = "";
         gameMessageDisplay.style.color = '#00FF00';
     }
+}
+
+// --- Keyboard Input Handling ---
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+        movePlayer('up');
+    }
+    else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+        movePlayer('down');
+    }
+    else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+        movePlayer('left');
+    }
+    else if (e.code === 'KeyD' || e.code === 'ArrowRight') {
+        movePlayer('right');
+    }
+});
+
+// --- Mobile Touch Controls ---
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+// Mobile control button references
+const moveUpBtn = document.getElementById('moveUp');
+const moveDownBtn = document.getElementById('moveDown');
+const moveLeftBtn = document.getElementById('moveLeft');
+const moveRightBtn = document.getElementById('moveRight');
+
+// Function to add touch feedback
+function addTouchFeedback(button) {
+    button.classList.add('touched');
+    setTimeout(() => {
+        button.classList.remove('touched');
+    }, 100);
+}
+
+// Touch button event handlers
+function setupMobileControls() {
+    if (moveUpBtn) {
+        moveUpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            addTouchFeedback(moveUpBtn);
+            movePlayer('up');
+        });
+        moveUpBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            movePlayer('up');
+        });
+    }
+
+    if (moveDownBtn) {
+        moveDownBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            addTouchFeedback(moveDownBtn);
+            movePlayer('down');
+        });
+        moveDownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            movePlayer('down');
+        });
+    }
+
+    if (moveLeftBtn) {
+        moveLeftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            addTouchFeedback(moveLeftBtn);
+            movePlayer('left');
+        });
+        moveLeftBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            movePlayer('left');
+        });
+    }
+
+    if (moveRightBtn) {
+        moveRightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            addTouchFeedback(moveRightBtn);
+            movePlayer('right');
+        });
+        moveRightBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            movePlayer('right');
+        });
+    }
+}
+
+// Swipe gesture support on canvas
+function setupSwipeControls() {
+    const canvas = document.getElementById('gameCanvas');
+    
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        touchEndX = touch.clientX;
+        touchEndY = touch.clientY;
+        handleSwipe();
+    }, { passive: false });
+
+    // Prevent scrolling on canvas touch
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+    }, { passive: false });
+}
+
+function handleSwipe() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const minSwipeDistance = 30; // Minimum distance for a swipe
+
+    // Check if swipe distance is significant enough
+    if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
+        return;
+    }
+
+    // Determine swipe direction (prioritize the larger movement)
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (deltaX > 0) {
+            movePlayer('right');
+        } else {
+            movePlayer('left');
+        }
+    } else {
+        // Vertical swipe
+        if (deltaY > 0) {
+            movePlayer('down');
+        } else {
+            movePlayer('up');
+        }
+    }
+}
+
+// Initialize mobile controls when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    setupMobileControls();
+    setupSwipeControls();
 });
 
 // --- Game Functions ---

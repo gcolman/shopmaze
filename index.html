@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Red Hat Quest</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -112,6 +112,20 @@
         <button id="checkoutButton">Checkout</button> 
         <div id="gameMessage"></div>
         <button id="restartButton">Restart Game</button>
+        
+        <!-- Mobile Touch Controls -->
+        <div id="mobileControls" class="mobile-controls">
+            <div class="control-instructions">Touch to move</div>
+            <div class="dpad">
+                <button id="moveUp" class="control-btn up-btn">↑</button>
+                <div class="middle-row">
+                    <button id="moveLeft" class="control-btn left-btn">←</button>
+                    <div class="center-space"></div>
+                    <button id="moveRight" class="control-btn right-btn">→</button>
+                </div>
+                <button id="moveDown" class="control-btn down-btn">↓</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

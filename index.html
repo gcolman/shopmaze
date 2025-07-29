@@ -8,19 +8,43 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="game-area">
-            <canvas id="gameCanvas"></canvas>
+        <div id="game-header">
+            <div class="header-content">
+                <div class="counter-group">
+                    <img src="assets/coin.png" alt="Coins" class="counter-icon">
+                    <span id="coinCount">0</span>
+                </div>
+                <h1 class="game-title">Red Hat Quest v2.1</h1>
+                <div class="lives-section">
+                    <span class="lives-label"></span>
+                    <div id="redHatCounters" class="red-hat-counters"></div>
+                </div>
+            </div>
         </div>
         
-        <div id="game-info">
-            <h1>Red Hat Quest v2.1</h1>
-            <div id="redHatCounters"></div>
-            <h2>Coins: <span id="coinCount">0</span></h2>
-            <div id="shoppingBasket"></div>
-            <button id="checkoutButton">Checkout</button> 
-            <div id="gameMessage"></div>
-            <button id="restartButton">Restart Game</button>
+        <div id="game-area">
+            <canvas id="gameCanvas"></canvas>
+            <div id="game-bottom-bar">
+                <div class="bottom-counter">
+                    <img src="assets/t_shirt_rhel.png" alt="T-Shirts" class="bottom-icon">
+                    <span>T-Shirts: </span>
+                    <span id="tshirtTotal">0</span>
+                </div>
+            </div>
+            
+            <!-- Game Over Overlay -->
+            <div id="gameOverlay" style="display:none;">
+                <div class="overlay-content">
+                    <h2 id="overlayTitle">Game Over!</h2>
+                    <div class="overlay-buttons">
+                        <button id="checkoutButton">Checkout</button>
+                        <button id="restartButton">Restart Game</button>
+                    </div>
+                </div>
+            </div>
         </div>
+        
+
         
         <div id="orderConfirmationOverlay" style="display:none;">
             <div class="order-confirmation-box">

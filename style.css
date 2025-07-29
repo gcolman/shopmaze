@@ -28,11 +28,17 @@ body {
 #game-area {
     width: 100%;
     max-width: 600px;
-    height: 480px;
     border: 5px solid #555;
-    border-radius: 5px;
+    border-radius: 10px;
     overflow: hidden;
     margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#gameCanvas {
+    border-radius: 5px 5px 0 0;
 }
 
 #gameCanvas {
@@ -729,5 +735,282 @@ body {
     }
 }
 
+/* Game Header with Counters */
+#game-header {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    border-radius: 10px;
+    padding: 10px 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    border: 2px solid #60a5fa;
+    margin-bottom: 10px;
+}
 
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.game-title {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+}
+
+.counter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.15);
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.counter-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.counter-group span {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    min-width: 20px;
+    text-align: center;
+}
+
+.lives-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lives-label {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.red-hat-counters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.red-hat-counters .counter-group {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    padding: 3px 8px;
+}
+
+.red-hat-counters .counter-group img {
+    width: 18px;
+    height: 18px;
+}
+
+/* Mobile responsive header */
+@media (max-width: 768px) {
+    #game-header {
+        padding: 8px 10px;
+        margin-bottom: 8px;
+    }
+    
+    .header-content {
+        gap: 15px;
+    }
+    
+    .game-title {
+        font-size: 16px;
+    }
+    
+
+    
+    .lives-section {
+        gap: 8px;
+    }
+    
+    .lives-label {
+        font-size: 14px;
+    }
+    
+    .counter-group {
+        padding: 4px 8px;
+        gap: 6px;
+    }
+    
+    .counter-icon {
+        width: 15px;
+        height: 15px;
+    }
+    
+    .counter-group span {
+        font-size: 14px;
+    }
+    
+        .red-hat-counters .counter-group {
+        padding: 2px 6px;
+    }
+    
+    .red-hat-counters .counter-group img {
+        width: 15px;
+        height: 15px;
+    }
+}
+
+/* Game Bottom Bar */
+#game-bottom-bar {
+    background: linear-gradient(135deg, #374151, #4b5563);
+    border-radius: 0 0 10px 10px;
+    padding: 8px 15px;
+    border: 2px solid #6b7280;
+    border-top: 1px solid #9ca3af;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bottom-counter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    padding: 4px 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.bottom-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.bottom-counter span {
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Mobile responsive bottom bar */
+@media (max-width: 768px) {
+    #game-bottom-bar {
+        padding: 6px 10px;
+    }
+    
+    .bottom-counter {
+        padding: 3px 8px;
+        gap: 6px;
+    }
+    
+    .bottom-icon {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .bottom-counter span {
+        font-size: 12px;
+    }
+}
+
+/* Game Over Overlay */
+#gameOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    z-index: 1000;
+}
+
+.overlay-content {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    border: 3px solid #60a5fa;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#overlayTitle {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 0 20px 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.overlay-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.overlay-buttons button {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #ffffff;
+    border: 2px solid #fca5a5;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.overlay-buttons button:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    border-color: #f87171;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.overlay-buttons button:active {
+    transform: translateY(0);
+}
+
+/* Ensure game-area has relative positioning for overlay */
+#game-area {
+    position: relative;
+}
+
+/* Mobile responsive overlay */
+@media (max-width: 768px) {
+    .overlay-content {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    #overlayTitle {
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .overlay-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .overlay-buttons button {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+}
 

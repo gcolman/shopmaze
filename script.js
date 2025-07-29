@@ -100,8 +100,10 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const redHatCountersDisplay = document.getElementById('redHatCounters');
 const coinCountDisplay = document.getElementById('coinCount');
-const shoppingBasketDisplay = document.getElementById('shoppingBasket');
-const gameMessageDisplay = document.getElementById('gameMessage');
+
+const tshirtTotalDisplay = document.getElementById('tshirtTotal');
+const gameOverlay = document.getElementById('gameOverlay');
+const overlayTitle = document.getElementById('overlayTitle');
 const restartButtonElement = document.getElementById('restartButton'); 
 const checkoutButtonElement = document.getElementById('checkoutButton'); // Get checkout button element
 // Order Confirmation Elements
@@ -208,8 +210,7 @@ function movePlayer(direction, isContinuous = false) {
 
     if (newGridX < 0 || newGridX >= MAZE_WIDTH_TILES || newGridY < 0 || newGridY >= MAZE_HEIGHT_TILES) {
         if (!isContinuous) {
-            gameMessageDisplay.textContent = "You hit the shop boundary!";
-            gameMessageDisplay.style.color = '#FF5722';
+                    // Player hit boundary (message display removed)
         }
         return false;
     }
@@ -224,10 +225,7 @@ function movePlayer(direction, isContinuous = false) {
     player.targetY = newGridY * TILE_SIZE;
     player.isMoving = true;
 
-    if (gameMessageDisplay.textContent === "You hit the shop boundary!") {
-        gameMessageDisplay.textContent = "";
-        gameMessageDisplay.style.color = '#00FF00';
-    }
+            // Clear boundary message timer (message display removed)
     
     return true;
 }
@@ -249,8 +247,7 @@ document.addEventListener('keydown', (e) => {
     else if (e.code === 'Space') {
         e.preventDefault();
         stopContinuousMovement();
-        gameMessageDisplay.textContent = "Movement stopped. Use WASD/arrows, swipe to move, or tap to stop.";
-        gameMessageDisplay.style.color = '#FFFF00';
+        // Movement stopped via spacebar
     }
 });
 
@@ -381,10 +378,7 @@ function handleSwipe() {
         console.log('Tap detected - stopping movement');
         stopContinuousMovement();
         
-        if (gameMessageDisplay) {
-            gameMessageDisplay.textContent = "Movement stopped. Swipe to move again.";
-            gameMessageDisplay.style.color = '#FFFF00';
-        }
+        // Movement stopped
         return;
     }
 
@@ -420,10 +414,7 @@ function handleSwipe() {
 
 // Visual indicator for swipe detection
 function showSwipeIndicator(direction) {
-    if (gameMessageDisplay) {
-        gameMessageDisplay.textContent = `Moving ${direction}! Swipe to change direction or tap to stop.`;
-        gameMessageDisplay.style.color = '#00FFFF';
-    }
+    // Movement started in direction
 }
 
 
@@ -628,8 +619,7 @@ function checkCollectibles() {
             coin.collected = true;
             currentCoinCount++;
             updateUI();
-            gameMessageDisplay.textContent = `Collected a coin! Total: ${currentCoinCount}`;
-            gameMessageDisplay.style.color = '#00FF00';
+                // Coin collected (message display removed)
         }
     });
 
@@ -643,18 +633,15 @@ function checkCollectibles() {
             updateUI();
             stopTShirtTimer();
             resetTShirtInLevel();
-            gameMessageDisplay.textContent = `Congratulations! You bought the ${currentCollectableTShirt.id} T-Shirt!`;
-            gameMessageDisplay.style.color = '#00FF00';
+            // T-shirt purchased (message display removed)
 
             // After collecting a T-shirt, check if all collected
             if (tShirtsAvailable.every(t => t.collected)) { // Check if ALL T-shirts in the master list are collected
-                 gameMessageDisplay.textContent = "You collected all T-shirts! Great job!";
-                 gameMessageDisplay.style.color = '#00FF00';
+                             // All t-shirts collected (message display removed)
             }
 
         } else {
-            gameMessageDisplay.textContent = `Not enough coins for the ${currentCollectableTShirt.id} T-Shirt! You need ${currentCollectableTShirt.cost}, you have ${currentCoinCount}.`;
-            gameMessageDisplay.style.color = '#FFC107';
+            // Not enough coins (message display removed)
         }
     }
 }
@@ -671,8 +658,7 @@ function checkGhostPlayerCollisions() {
         if (player.gridX === ghost.gridX && player.gridY === ghost.gridY) {
             player.redHats--; // Lose a red hat
             player.invincible = true; // Become temporarily invincible
-            gameMessageDisplay.textContent = `Oh no! A ghost got you! Red Hats left: ${player.redHats}`;
-            gameMessageDisplay.style.color = '#FF5722';
+                    // Ghost collision (message display removed)
 
             updateUI(); // Update hat display
 
@@ -686,8 +672,7 @@ function checkGhostPlayerCollisions() {
                 setTimeout(() => {
                     player.invincible = false;
                     if (!gameOver) { // Only clear message if game not over
-                        gameMessageDisplay.textContent = "";
-                        gameMessageDisplay.style.color = '#00FF00';
+                            // Level start (message display removed)
                     }
                 }, PLAYER_INVINCIBILITY_DURATION_MS);
             }
@@ -712,8 +697,7 @@ function startTShirtTimer() {
         if (tShirtTimeLeft <= 0) {
             stopTShirtTimer();
             if (tShirtInLevel && !tShirtInLevel.collected) {
-                gameMessageDisplay.textContent = `The ${tShirtInLevel.id} T-Shirt timed out! Collect more coins to try again.`;
-                gameMessageDisplay.style.color = '#FF5722';
+                        // T-shirt timeout (message display removed)
                 resetTShirtInLevel();
             }
         }
@@ -768,13 +752,11 @@ function spawnGhostRandomly() {
         
         activeGhosts.push(newGhost); // Add to the array
         
-        gameMessageDisplay.textContent = "A ghost has appeared!";
-        gameMessageDisplay.style.color = '#FFC107';
+        // Ghost spawned (message display removed)
 
         // Ghost movement logic is driven by the single global ghostMovementIntervalId
     } else {
-        gameMessageDisplay.textContent = "Could not find a spot to spawn Ghost.";
-        gameMessageDisplay.style.color = '#FF5722';
+        // Could not spawn ghost (message display removed)
     }
 }
 
@@ -788,8 +770,7 @@ function spawnNextTShirt() { // This is for the 2D version where T-shirts appear
     if (eligibleTShirts.length === 0) {
         // If no T-shirts are eligible to spawn, check if all are collected (game completion)
         if (tShirtsAvailable.every(t => t.collected)) {
-            gameMessageDisplay.textContent = "All T-shirts collected! Great job!";
-            gameMessageDisplay.style.color = '#00FF00';
+                    // All T-shirts collected (message display removed)
         }
         return; // Nothing to spawn yet
     }
@@ -832,12 +813,10 @@ function spawnNextTShirt() { // This is for the 2D version where T-shirts appear
             height: T_SHIRT_SIZE,
             collected: false
         };
-        gameMessageDisplay.textContent = `A T-Shirt (${tShirtInLevel.id}) appeared! Cost: ${tShirtInLevel.cost} coins. Find it fast!`;
-        gameMessageDisplay.style.color = '#FFC107';
+        // T-shirt spawned (message display removed)
         startTShirtTimer();
     } else {
-        gameMessageDisplay.textContent = "Could not find a spot to spawn T-shirt. Try collecting more coins.";
-        gameMessageDisplay.style.color = '#FF5722';
+        // Could not spawn T-shirt (message display removed)
     }
 }
 
@@ -852,11 +831,9 @@ function goToNextLevel() {
     currentLevelIndex++;
     if (currentLevelIndex >= MAZE_LEVELS.length) {
         currentLevelIndex = 0; // Loop back to first level if all are cleared
-        gameMessageDisplay.textContent = "All mazes cleared! Restarting from Level 1.";
-        gameMessageDisplay.style.color = '#00FF00';
+        // All mazes cleared (message display removed)
     } else {
-        gameMessageDisplay.textContent = `Maze cleared! Advancing to Level ${currentLevelIndex + 1}.`;
-        gameMessageDisplay.style.color = '#00FF00';
+        // Maze cleared, advancing level (message display removed)
     }
 
     MAZE = MAZE_LEVELS[currentLevelIndex];
@@ -905,18 +882,11 @@ function updateUI() {
     }
 
     coinCountDisplay.textContent = currentCoinCount;
-    shoppingBasketDisplay.innerHTML = '';
-    shoppingBasket.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'basket-item';
-        const imgElement = document.createElement('img');
-        
-        imgElement.src = item.src; // For 2D, item.src is direct image path
-        imgElement.alt = item.id;
-        itemDiv.appendChild(imgElement);
-        
-        shoppingBasketDisplay.appendChild(itemDiv);
-    });
+    
+    // Update t-shirt total in bottom bar
+    if (tshirtTotalDisplay) {
+        tshirtTotalDisplay.textContent = shoppingBasket.length;
+    }
     // Enable/disable checkout button based on basket content
     if (checkoutButtonElement) { // Check if element exists
         checkoutButtonElement.disabled = shoppingBasket.length === 0;
@@ -928,8 +898,13 @@ function updateUI() {
 function endGame(message) {
     gameOver = true;
     stopContinuousMovement(); // Stop continuous movement on game over
-    gameMessageDisplay.textContent = message;
-    gameMessageDisplay.style.color = '#FF0000';
+    
+    // Show game over overlay
+    if (gameOverlay && overlayTitle) {
+        overlayTitle.textContent = message || "Game Over!";
+        gameOverlay.style.display = 'flex';
+    }
+    
     // Clear all ghost-related timers/intervals
     activeGhosts.forEach(g => clearInterval(g.chaseInterval));
     activeGhosts = []; // Clear array of ghosts
@@ -942,6 +917,9 @@ function endGame(message) {
 
 // --- Restart Game function (bound to button) ---
 function restartGame() {
+    // Hide game over overlay
+    if (gameOverlay) gameOverlay.style.display = 'none';
+    
     gameOver = false;
     currentLevelIndex = 0;
     MAZE = MAZE_LEVELS[currentLevelIndex]; // Reset to Level 1 Maze
@@ -991,23 +969,20 @@ function startInitialGhostSpawnTimer() {
             spawnGhostRandomly();
         }
     }, GHOST_SPAWN_DELAY_SECONDS * 1000); 
-    gameMessageDisplay.textContent = `A ghost will appear in ${GHOST_SPAWN_DELAY_SECONDS} seconds!`;
-    gameMessageDisplay.style.color = '#FF5722';
+    // Ghost spawn timer started (no message display needed)
 }
 
 // --- Order Confirmation Functions ---
 function showOrderConfirmation() {
     // Check if the order confirmation overlay elements exist
     if (!orderConfirmationOverlay || !orderItemsList || !orderTotalDisplay || !cancelOrderButton || !placeOrderButton) {
-        gameMessageDisplay.textContent = "Error: Order confirmation HTML elements not found!";
-        gameMessageDisplay.style.color = '#FF5722';
+        console.error("Error: Order confirmation HTML elements not found!");
         console.error("Order confirmation HTML elements missing!");
         return;
     }
 
     if (shoppingBasket.length === 0) {
-        gameMessageDisplay.textContent = "Your basket is empty! Collect some T-shirts first.";
-        gameMessageDisplay.style.color = '#FFC107';
+        console.log("Basket is empty - order confirmation disabled");
         return;
     }
 
@@ -1037,8 +1012,7 @@ function showOrderConfirmation() {
 
     orderTotalDisplay.textContent = totalCost + " coins";
 
-    gameMessageDisplay.textContent = "Order confirmation displayed! Review your items.";
-    gameMessageDisplay.style.color = '#00FF00';
+    // Order confirmation displayed
 }
 
 function closeOrderConfirmation() {
@@ -1052,15 +1026,13 @@ function closeOrderConfirmation() {
 function generateInvoice() {
     // Check if the invoice overlay elements exist
     if (!invoiceOverlay || !invoiceItemsDisplay || !invoiceTotalDisplay || !invoiceNumberDisplay || !invoiceDateDisplay || !invoiceSubtotalDisplay || !closeInvoiceButton) {
-        gameMessageDisplay.textContent = "Error: Invoice HTML elements not found in index.html!";
-        gameMessageDisplay.style.color = '#FF5722';
+        console.error("Error: Invoice HTML elements not found in index.html!");
         console.error("Invoice HTML elements missing! Check index.html for invoiceOverlay and its children.");
         return;
     }
 
     if (shoppingBasket.length === 0) {
-        gameMessageDisplay.textContent = "Your basket is empty! Collect some T-shirts first.";
-        gameMessageDisplay.style.color = '#FFC107';
+        console.log("Basket is empty - invoice generation disabled");
         return;
     }
 
@@ -1096,8 +1068,7 @@ function generateInvoice() {
     invoiceSubtotalDisplay.textContent = totalCost + " coins";
     invoiceTotalDisplay.textContent = totalCost + " coins";
 
-    gameMessageDisplay.textContent = "Invoice generated! Check your order.";
-    gameMessageDisplay.style.color = '#00FF00';
+    // Invoice generated
 
     // Attach listener for close button 
     closeInvoiceButton.onclick = closeInvoice;
@@ -1171,9 +1142,8 @@ function initializeGameElements() {
     shoppingBasket = []; // NEW: Clear basket on full game restart
     gameActive = true;
     updateUI(); // Initial UI update
-    gameMessageDisplay.textContent = "Welcome! Collect coins, avoid ghosts!";
-    gameMessageDisplay.style.color = '#00FF00';
-    restartButtonElement.style.display = 'none'; // Ensure restart button is hidden at start
+    // Game initialized - welcome message removed (no UI element for messages)
+    if (restartButtonElement) restartButtonElement.style.display = 'none'; // Ensure restart button is hidden at start
     
     // Attach checkout button listener when elements are guaranteed to exist
     if (checkoutButtonElement) { 

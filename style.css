@@ -1,0 +1,648 @@
+body {
+    margin: 0;
+    overflow: hidden; /* Prevent scrollbars */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #222; /* Dark background for outside game area */
+    background-image: url('assets/background.png'); /* Optional: General shop floor background */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    color: #eee;
+}
+
+#game-container {
+    position: relative; /* Crucial for invoice overlay positioning */
+    width: 600px; /* Match CANVAS_WIDTH from JS (15 * 40) */
+    height: 480px; /* Match CANVAS_HEIGHT from JS (12 * 40) */
+    border: 5px solid #555;
+    box-shadow: 0 0 25px rgba(0,0,0,0.6);
+    background-color: #1a1a1a; /* Dark background for game area behind canvas */
+}
+
+#gameCanvas {
+    background-color: #333; /* Shop floor color for playable areas */
+    display: block;
+    width: 100%; /* Make canvas fill its container */
+    height: 100%;
+}
+
+#sidebar {
+    width: 250px;
+    height: 480px; /* Match game-container height */
+    background-color: #2a2a2a;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    text-align: center;
+    border-left: 2px solid #555;
+}
+
+#sidebar h1 {
+    font-size: 1.8em;
+    margin-bottom: 15px;
+    color: #FFC107;
+}
+
+#redHatCounters {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.red-hat-icon {
+    width: 30px;
+    height: 30px;
+}
+
+#sidebar h2, #sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #fff;
+    text-align: center;
+}
+
+
+
+#shoppingBasket {
+    width: 100%;
+    height: 200px; /* Slightly smaller to fit checkout button */
+    border: 1px dashed #777;
+    background-color: #3a3a3a;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.basket-item {
+    width: 60px; /* Slightly smaller items for more fit */
+    height: 60px;
+    border: 2px solid #666;
+    background-color: #555;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.7em;
+    color: #ccc;
+    text-align: center;
+    box-sizing: border-box;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.basket-item img {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+}
+
+#checkoutButton, #restartButton { /* Combined styling for buttons */
+    padding: 8px 15px; /* Slightly smaller buttons */
+    font-size: 1.1em;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 15px; /* Less margin */
+    width: 100%;
+}
+#checkoutButton:hover, #restartButton:hover {
+    background-color: #0056b3;
+}
+#restartButton {
+    display: none; /* Hidden by default, shown on game over */
+}
+
+#gameMessage {
+    margin-top: 15px; /* Less margin */
+    font-size: 1em; /* Slightly smaller font */
+    font-weight: bold;
+    color: #00FF00;
+    text-align: center;
+    min-height: 40px; /* Adjusted min-height */
+    overflow-y: auto;
+    word-wrap: break-word;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 5px;
+}
+
+/* --- Invoice Overlay Styles --- */
+#invoiceOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; /* Spans over the whole game-container */
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95); /* More opaque background */
+    color: #333; /* Default text color for invoice content */
+    display: flex; /* Will be toggled to 'flex' by JS */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 10px; /* Reduced padding */
+    box-sizing: border-box;
+    z-index: 10; /* Ensures it's on top of game canvas */
+    font-family: 'Roboto', sans-serif; /* A more "document" like font */
+}
+
+.invoice-box {
+    /* Adjusted for smaller screen fit */
+    width: 95%; /* Use almost full width of game-container */
+    max-width: 580px; /* Max width slightly less than game-container width */
+    height: 95%; /* Use almost full height of game-container */
+    max-height: 460px; /* Max height slightly less than game-container height */
+
+    background: #fff;
+    padding: 15px; /* Reduced padding */
+    border: 1px solid #eee;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    font-size: 13px; /* Smaller base font size */
+    line-height: 18px; /* Adjusted line height */
+    box-sizing: border-box;
+    text-align: left; /* Align content inside box to left */
+    display: flex; /* Make invoice box content flex */
+    flex-direction: column; /* Stack sections vertically */
+    overflow-y: auto; /* Make entire invoice scrollable */
+    
+    /* Firefox scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}
+
+/* Make invoice sections scrollable if they exceed space */
+.invoice-section.item-table {
+    flex-grow: 0; /* Don't grow - let content determine size */
+    flex-shrink: 0; /* Don't shrink - maintain natural size */
+    border-bottom: 1px solid #eee; /* Ensure bottom border is there */
+    min-height: auto; /* Let content determine height */
+    max-height: none; /* Remove height restriction - let invoice scroll instead */
+}
+
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0; /* Prevent header from shrinking */
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
+}
+
+.invoice-logo h1 {
+    margin: 0;
+    font-size: 1.6em; /* Smaller font for header */
+    color: #dc3545;
+}
+.invoice-logo img { /* For optional logo */
+    max-width: 100px; /* Smaller logo */
+    height: auto;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.invoice-details {
+    text-align: right;
+    line-height: 1.3; /* Adjusted line height */
+}
+.invoice-details h2 {
+    margin: 0;
+    font-size: 1.4em; /* Smaller font for section header */
+    color: #555;
+}
+.invoice-details p {
+    margin: 0;
+    color: #777;
+}
+.invoice-details strong {
+    color: #333;
+}
+
+.invoice-section {
+    margin-bottom: 15px; /* Reduced margin */
+    padding-bottom: 10px; /* Reduced padding */
+    flex-shrink: 0; /* Prevent sections from shrinking */
+    /* Removed border-bottom here as item-table will handle it, and last-of-type will remove others */
+}
+.invoice-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.customer-info h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-size: 1.0em;
+    color: #555;
+}
+.customer-info p {
+    margin: 0;
+    color: #777;
+}
+
+.item-table table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    table-layout: fixed; /* Ensure consistent column widths */
+}
+.item-table th, .item-table td {
+    padding: 8px 4px; /* Better padding for visibility */
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+.item-table th {
+    background-color: #f2f2f2;
+    color: #555;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8em;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.item-table td {
+    color: #666;
+}
+.item-table td:last-child,
+.item-table th:last-child {
+    text-align: right;
+}
+.item-table .item-description {
+    display: flex;
+    align-items: center;
+}
+.item-table .item-description img {
+    height: 18px; /* Smaller icon size in table */
+    width: auto;
+    margin-right: 5px; /* Reduced margin */
+    flex-shrink: 0;
+}
+
+.item-table th:nth-child(1),
+.item-table td:nth-child(1) {
+    width: 50%; /* Item Description takes half the width */
+}
+
+.item-table th:nth-child(2),
+.item-table td:nth-child(2) {
+    width: 15%; /* Quantity column */
+}
+
+.item-table th:nth-child(3),
+.item-table td:nth-child(3) {
+    width: 20%; /* Unit Price column */
+}
+
+.item-table th:nth-child(4),
+.item-table td:nth-child(4) {
+    width: 15%; /* Line Total column */
+}
+
+
+.invoice-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 15px; /* Reduced margin */
+    flex-shrink: 0;
+    min-height: 80px; /* Ensure consistent height for summary */
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    width: 60%;
+    min-width: 180px;
+    padding: 4px 0;
+}
+.summary-row.total-row {
+    font-size: 1.1em;
+    font-weight: bold;
+    border-top: 2px solid #555;
+    padding-top: 8px;
+    margin-top: 8px;
+    color: #333;
+}
+.summary-row .total-coins-value {
+    color: #00C853;
+}
+
+
+.invoice-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.8em;
+    color: #777;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    flex-shrink: 0;
+}
+.invoice-footer p {
+    margin: 4px 0;
+}
+
+#closeInvoiceButton {
+    padding: 8px 15px;
+    font-size: 1.1em;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+#closeInvoiceButton:hover {
+    background-color: #c82333;
+}
+
+/* Burger menu specific styles */
+.burger-menu-container {
+    position: relative;
+    display: inline-block; /* Aligns with text if desired */
+    width: 100%; /* Spans full sidebar width */
+    text-align: left; /* Aligns menu button to left */
+    margin-bottom: 10px;
+}
+
+.burger-menu-button {
+    background-color: #555;
+    color: white;
+    padding: 8px 15px;
+    font-size: 1em;
+    border: none;
+    cursor: pointer;
+    width: 100%; /* Button fills container */
+    text-align: left;
+    border-radius: 4px;
+}
+
+.burger-menu-button:hover {
+    background-color: #777;
+}
+
+.dropdown-content {
+    display: none; /* Hidden by default */
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1; /* On top of other sidebar elements */
+    width: 100%;
+    left: 0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+.dropdown-content a:active {
+    background-color: #007bff; /* Highlight on click */
+    color: white;
+}
+
+/* Show the dropdown menu when hovering over the button/container (optional, or rely on JS) */
+/* .burger-menu-container:hover .dropdown-content {
+    display: block;
+} */
+
+/* Custom scrollbar for invoice */
+.invoice-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.invoice-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.invoice-box::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.invoice-box::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Order Confirmation Overlay Styles */
+#orderConfirmationOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.95);
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+    z-index: 10;
+    font-family: 'Roboto', sans-serif;
+}
+
+.order-confirmation-box {
+    width: 90%;
+    max-width: 500px;
+    height: auto;
+    max-height: 80%;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1.5;
+    box-sizing: border-box;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    
+    /* Scrollbar styling for order confirmation */
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}
+
+.order-confirmation-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.order-confirmation-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.order-confirmation-box::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.order-confirmation-box::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.order-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #dc3545;
+}
+
+.order-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 1.8em;
+    color: #dc3545;
+}
+
+.order-header p {
+    margin: 0;
+    color: #666;
+    font-size: 1em;
+}
+
+.order-section {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.order-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.2em;
+    color: #555;
+    text-align: center;
+}
+
+.order-items-list {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.order-item-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.order-item-info img {
+    height: 24px;
+    width: auto;
+    margin-right: 10px;
+}
+
+.order-item-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.order-item-price {
+    font-weight: bold;
+    color: #dc3545;
+    margin-left: 10px;
+}
+
+.order-summary {
+    text-align: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.order-total {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.order-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.order-button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.cancel-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+.cancel-button:hover {
+    background-color: #5a6268;
+}
+
+.place-order-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.place-order-button:hover {
+    background-color: #c82333;
+}
+
+.place-order-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+

@@ -264,56 +264,7 @@ function addTouchFeedback(button) {
     }, 100);
 }
 
-// Touch button event handlers
-function setupMobileControls() {
-    if (moveUpBtn) {
-        moveUpBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            addTouchFeedback(moveUpBtn);
-            movePlayer('up');
-        });
-        moveUpBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            movePlayer('up');
-        });
-    }
 
-    if (moveDownBtn) {
-        moveDownBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            addTouchFeedback(moveDownBtn);
-            movePlayer('down');
-        });
-        moveDownBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            movePlayer('down');
-        });
-    }
-
-    if (moveLeftBtn) {
-        moveLeftBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            addTouchFeedback(moveLeftBtn);
-            movePlayer('left');
-        });
-        moveLeftBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            movePlayer('left');
-        });
-    }
-
-    if (moveRightBtn) {
-        moveRightBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            addTouchFeedback(moveRightBtn);
-            movePlayer('right');
-        });
-        moveRightBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            movePlayer('right');
-        });
-    }
-}
 
 // Swipe gesture support on canvas
 function setupSwipeControls() {
@@ -368,11 +319,90 @@ function handleSwipe() {
     }
 }
 
+// Force show mobile controls for debugging (remove this later)
+function forceShowMobileControls() {
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls) {
+        mobileControls.style.display = 'block';
+        mobileControls.style.position = 'fixed';
+        mobileControls.style.bottom = '20px';
+        mobileControls.style.right = '20px';
+        mobileControls.style.zIndex = '999';
+        console.log('Mobile controls forced to show');
+    }
+}
+
+// Enhanced mobile control setup with better error handling
+function setupMobileControlsEnhanced() {
+    console.log('Setting up mobile controls...');
+    
+    // Force show controls for testing
+    forceShowMobileControls();
+    
+    const moveUpBtn = document.getElementById('moveUp');
+    const moveDownBtn = document.getElementById('moveDown');
+    const moveLeftBtn = document.getElementById('moveLeft');
+    const moveRightBtn = document.getElementById('moveRight');
+    
+    console.log('Button elements found:', {
+        up: !!moveUpBtn,
+        down: !!moveDownBtn,
+        left: !!moveLeftBtn,
+        right: !!moveRightBtn
+    });
+    
+    // Enhanced button setup with both touch and click events
+    const setupButton = (button, direction) => {
+        if (!button) return;
+        
+        // Touch events
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(`Touch start: ${direction}`);
+            addTouchFeedback(button);
+            movePlayer(direction);
+        }, { passive: false });
+        
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, { passive: false });
+        
+        // Click events (for desktop testing)
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(`Click: ${direction}`);
+            movePlayer(direction);
+        });
+        
+        // Mouse events for visual feedback
+        button.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            addTouchFeedback(button);
+        });
+        
+        console.log(`Button setup complete: ${direction}`);
+    };
+    
+    setupButton(moveUpBtn, 'up');
+    setupButton(moveDownBtn, 'down');
+    setupButton(moveLeftBtn, 'left');
+    setupButton(moveRightBtn, 'right');
+}
+
 // Initialize mobile controls when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    setupMobileControls();
+    setupMobileControlsEnhanced();
     setupSwipeControls();
 });
+
+// Also try to initialize after a short delay in case DOMContentLoaded already fired
+setTimeout(() => {
+    setupMobileControlsEnhanced();
+    setupSwipeControls();
+}, 100);
 
 // --- Game Functions ---
 

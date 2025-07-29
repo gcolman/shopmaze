@@ -701,8 +701,9 @@ body {
 
     /* Show mobile controls on small screens */
     .mobile-controls {
-        display: block;
+        display: block !important;
     }
+}
 
     /* Adjust canvas for mobile */
     #gameCanvas {
@@ -793,7 +794,7 @@ body {
 /* Mobile Landscape */
 @media (max-width: 1024px) and (orientation: landscape) {
     .mobile-controls {
-        display: block;
+        display: block !important;
     }
 
     .dpad {
@@ -816,10 +817,11 @@ body {
 /* Tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
     .mobile-controls {
-        display: block;
+        display: block !important;
         bottom: 30px;
         right: 30px;
     }
+}
 
     .control-btn {
         width: 70px;

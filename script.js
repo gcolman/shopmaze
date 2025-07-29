@@ -174,9 +174,9 @@ tShirtsAvailable.forEach(tShirt => {
 
 
 // --- Player Movement Function (Shared between keyboard and mobile) ---
-function movePlayer(direction) {
+function movePlayer(direction, isContinuous = false) {
     if (gameOver || player.isMoving || !gameActive) {
-        return;
+        return false;
     }
 
     let newGridX = player.gridX;
@@ -203,17 +203,19 @@ function movePlayer(direction) {
     }
 
     if (!moved) {
-        return;
+        return false;
     }
 
     if (newGridX < 0 || newGridX >= MAZE_WIDTH_TILES || newGridY < 0 || newGridY >= MAZE_HEIGHT_TILES) {
-        gameMessageDisplay.textContent = "You hit the shop boundary!";
-        gameMessageDisplay.style.color = '#FF5722';
-        return;
+        if (!isContinuous) {
+            gameMessageDisplay.textContent = "You hit the shop boundary!";
+            gameMessageDisplay.style.color = '#FF5722';
+        }
+        return false;
     }
 
     if (MAZE[newGridY][newGridX] === 1) {
-        return; // It's a wall, cannot move
+        return false; // It's a wall, cannot move
     }
 
     player.gridX = newGridX;
@@ -226,21 +228,29 @@ function movePlayer(direction) {
         gameMessageDisplay.textContent = "";
         gameMessageDisplay.style.color = '#00FF00';
     }
+    
+    return true;
 }
 
 // --- Keyboard Input Handling ---
 document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyW' || e.code === 'ArrowUp') {
-        movePlayer('up');
+        startContinuousMovement('up');
     }
     else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
-        movePlayer('down');
+        startContinuousMovement('down');
     }
     else if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
-        movePlayer('left');
+        startContinuousMovement('left');
     }
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') {
-        movePlayer('right');
+        startContinuousMovement('right');
+    }
+    else if (e.code === 'Space') {
+        e.preventDefault();
+        stopContinuousMovement();
+        gameMessageDisplay.textContent = "Movement stopped. Use WASD or arrows to move.";
+        gameMessageDisplay.style.color = '#FFFF00';
     }
 });
 
@@ -250,23 +260,24 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 
-// Mobile control button references
-const moveUpBtn = document.getElementById('moveUp');
-const moveDownBtn = document.getElementById('moveDown');
-const moveLeftBtn = document.getElementById('moveLeft');
-const moveRightBtn = document.getElementById('moveRight');
-
-// Function to add touch feedback
-function addTouchFeedback(button) {
-    button.classList.add('touched');
-    setTimeout(() => {
-        button.classList.remove('touched');
-    }, 100);
-}
+// Continuous movement system
+let continuousMovement = {
+    active: false,
+    direction: null,
+    intervalId: null,
+    speed: 200 // milliseconds between moves (faster for smoother continuous movement)
+};
 
 
 
-// Enhanced swipe gesture support with debugging
+
+
+
+
+// Enhanced swipe gesture support with debugging and double-tap detection
+let lastTapTime = 0;
+const doubleTapDelay = 300; // milliseconds
+
 function setupSwipeControls() {
     console.log('Setting up swipe controls...');
     
@@ -282,11 +293,6 @@ function setupSwipeControls() {
         console.log(`Setting up swipe target ${index + 1}:`, target.id || target.tagName);
         
         target.addEventListener('touchstart', (e) => {
-            // Don't prevent default if touching a button
-            if (e.target.classList.contains('control-btn')) {
-                return;
-            }
-            
             e.preventDefault();
             const touch = e.touches[0];
             touchStartX = touch.clientX;
@@ -295,24 +301,29 @@ function setupSwipeControls() {
         }, { passive: false });
 
         target.addEventListener('touchend', (e) => {
-            // Don't prevent default if touching a button
-            if (e.target.classList.contains('control-btn')) {
-                return;
-            }
-            
             e.preventDefault();
             const touch = e.changedTouches[0];
             touchEndX = touch.clientX;
             touchEndY = touch.clientY;
             console.log('Swipe end:', { x: touchEndX, y: touchEndY });
+            
+            // Check for double-tap
+            const currentTime = Date.now();
+            if (currentTime - lastTapTime < doubleTapDelay) {
+                console.log('Double-tap detected - stopping movement');
+                stopContinuousMovement();
+                gameMessageDisplay.textContent = "Movement stopped. Swipe to move again.";
+                gameMessageDisplay.style.color = '#FFFF00';
+                return;
+            }
+            lastTapTime = currentTime;
+            
             handleSwipe();
         }, { passive: false });
 
-        // Prevent scrolling on touch move, but allow button touches
+        // Prevent scrolling on touch move
         target.addEventListener('touchmove', (e) => {
-            if (!e.target.classList.contains('control-btn')) {
-                e.preventDefault();
-            }
+            e.preventDefault();
         }, { passive: false });
     });
 }
@@ -320,13 +331,13 @@ function setupSwipeControls() {
 function handleSwipe() {
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
-    const minSwipeDistance = 50; // Increased minimum distance for more reliable detection
+    const minSwipeDistance = 30; // Reduced for more responsive detection
     
     console.log('Swipe delta:', { deltaX, deltaY });
 
-    // Check if swipe distance is significant enough
+    // Check if swipe distance is significant enough (tap vs swipe)
     if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
-        console.log('Swipe too short, ignoring');
+        console.log('Tap detected (not a swipe), ignoring');
         return;
     }
 
@@ -336,29 +347,81 @@ function handleSwipe() {
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe
         if (deltaX > 0) {
-            direction = 'RIGHT';
+            direction = 'right';
             console.log('Swipe detected: RIGHT');
-            movePlayer('right');
         } else {
-            direction = 'LEFT';
+            direction = 'left';
             console.log('Swipe detected: LEFT');
-            movePlayer('left');
         }
     } else {
         // Vertical swipe
         if (deltaY > 0) {
-            direction = 'DOWN';
+            direction = 'down';
             console.log('Swipe detected: DOWN');
-            movePlayer('down');
         } else {
-            direction = 'UP';
+            direction = 'up';
             console.log('Swipe detected: UP');
-            movePlayer('up');
         }
     }
     
+    // Start continuous movement in the swiped direction
+    startContinuousMovement(direction);
+    
     // Visual feedback for swipe detection
-    showSwipeIndicator(direction);
+    showSwipeIndicator(direction.toUpperCase());
+}
+
+// Continuous movement functions
+function startContinuousMovement(direction) {
+    console.log('Starting continuous movement:', direction);
+    
+    // Stop any existing movement
+    stopContinuousMovement();
+    
+    // Set new direction
+    continuousMovement.direction = direction;
+    continuousMovement.active = true;
+    
+    // Start the movement interval
+    continuousMovement.intervalId = setInterval(() => {
+        if (continuousMovement.active && !gameOver && gameActive) {
+            continuousMove();
+        } else {
+            stopContinuousMovement();
+        }
+    }, continuousMovement.speed);
+    
+    // Make the first move immediately
+    continuousMove();
+}
+
+function stopContinuousMovement() {
+    if (continuousMovement.intervalId) {
+        clearInterval(continuousMovement.intervalId);
+        continuousMovement.intervalId = null;
+    }
+    continuousMovement.active = false;
+    continuousMovement.direction = null;
+    console.log('Continuous movement stopped');
+}
+
+function continuousMove() {
+    if (!continuousMovement.active || !continuousMovement.direction) {
+        return;
+    }
+    
+    // Only move if player is not currently animating
+    if (player.isMoving) {
+        return;
+    }
+    
+    const success = movePlayer(continuousMovement.direction, true);
+    
+    // If movement failed (hit wall), stop continuous movement
+    if (!success) {
+        console.log('Hit obstacle, stopping continuous movement');
+        stopContinuousMovement();
+    }
 }
 
 // Visual indicator for swipe detection (for debugging)
@@ -367,100 +430,23 @@ function showSwipeIndicator(direction) {
         const originalText = gameMessageDisplay.textContent;
         const originalColor = gameMessageDisplay.style.color;
         
-        gameMessageDisplay.textContent = `Swipe ${direction} detected!`;
+        gameMessageDisplay.textContent = `Moving ${direction}! Swipe to change direction.`;
         gameMessageDisplay.style.color = '#00FFFF';
         
         setTimeout(() => {
-            if (gameMessageDisplay.textContent === `Swipe ${direction} detected!`) {
+            if (gameMessageDisplay.textContent === `Moving ${direction}! Swipe to change direction.`) {
                 gameMessageDisplay.textContent = originalText;
                 gameMessageDisplay.style.color = originalColor;
             }
-        }, 1000);
+        }, 2000);
     }
 }
 
-// Force show mobile controls for debugging (remove this later)
-function forceShowMobileControls() {
-    const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls) {
-        mobileControls.style.display = 'block';
-        mobileControls.style.position = 'fixed';
-        mobileControls.style.bottom = '20px';
-        mobileControls.style.right = '20px';
-        mobileControls.style.zIndex = '999';
-        console.log('Mobile controls forced to show');
-    }
-}
 
-// Enhanced mobile control setup with better error handling
-function setupMobileControlsEnhanced() {
-    console.log('Setting up mobile controls...');
-    
-    // Force show controls for testing
-    forceShowMobileControls();
-    
-    const moveUpBtn = document.getElementById('moveUp');
-    const moveDownBtn = document.getElementById('moveDown');
-    const moveLeftBtn = document.getElementById('moveLeft');
-    const moveRightBtn = document.getElementById('moveRight');
-    
-    console.log('Button elements found:', {
-        up: !!moveUpBtn,
-        down: !!moveDownBtn,
-        left: !!moveLeftBtn,
-        right: !!moveRightBtn
-    });
-    
-    // Enhanced button setup with both touch and click events
-    const setupButton = (button, direction) => {
-        if (!button) return;
-        
-        // Touch events
-        button.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log(`Touch start: ${direction}`);
-            addTouchFeedback(button);
-            movePlayer(direction);
-        }, { passive: false });
-        
-        button.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        }, { passive: false });
-        
-        // Click events (for desktop testing)
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log(`Click: ${direction}`);
-            movePlayer(direction);
-        });
-        
-        // Mouse events for visual feedback
-        button.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            addTouchFeedback(button);
-        });
-        
-        console.log(`Button setup complete: ${direction}`);
-    };
-    
-    setupButton(moveUpBtn, 'up');
-    setupButton(moveDownBtn, 'down');
-    setupButton(moveLeftBtn, 'left');
-    setupButton(moveRightBtn, 'right');
-}
 
-// Enhanced initialization with better error handling
+// Enhanced initialization for swipe controls
 function initializeMobileFeatures() {
     console.log('Initializing mobile features...');
-    
-    try {
-        setupMobileControlsEnhanced();
-    } catch (error) {
-        console.error('Error setting up mobile controls:', error);
-    }
     
     try {
         setupSwipeControls();
@@ -878,6 +864,7 @@ function checkAllCoinsCollected() {
 
 // Resets coins and switches to next maze level
 function goToNextLevel() {
+    stopContinuousMovement(); // Stop continuous movement on level change
     currentLevelIndex++;
     if (currentLevelIndex >= MAZE_LEVELS.length) {
         currentLevelIndex = 0; // Loop back to first level if all are cleared
@@ -956,6 +943,7 @@ function updateUI() {
 // --- Game Over function ---
 function endGame(message) {
     gameOver = true;
+    stopContinuousMovement(); // Stop continuous movement on game over
     gameMessageDisplay.textContent = message;
     gameMessageDisplay.style.color = '#FF0000';
     // Clear all ghost-related timers/intervals
@@ -1039,6 +1027,7 @@ function showOrderConfirmation() {
         return;
     }
 
+    stopContinuousMovement(); // Stop continuous movement when showing order confirmation
     gameActive = false; // Pause game loop
     orderConfirmationOverlay.style.display = 'flex'; // Show order confirmation overlay
 
@@ -1094,6 +1083,7 @@ function generateInvoice() {
     // Close order confirmation if it's open
     closeOrderConfirmation();
     
+    stopContinuousMovement(); // Stop continuous movement when showing invoice
     gameActive = false; // Pause game loop
     invoiceOverlay.style.display = 'flex'; // Show invoice overlay
 

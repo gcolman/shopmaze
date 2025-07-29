@@ -52,9 +52,9 @@ USER 1001
 EXPOSE 8080
 
 # Add labels for better container management
-LABEL maintainer="Red Hat Quest Game" \
+LABEL maintainer="Red Hat Quest v2.0 Game" \
       description="A fun maze game where you collect Red Hat t-shirts" \
-      version="1.0"
+      version="2.0"
 
 # Start nginx when the container launches
 CMD ["nginx", "-g", "daemon off;"] 

@@ -266,56 +266,116 @@ function addTouchFeedback(button) {
 
 
 
-// Swipe gesture support on canvas
+// Enhanced swipe gesture support with debugging
 function setupSwipeControls() {
-    const canvas = document.getElementById('gameCanvas');
+    console.log('Setting up swipe controls...');
     
-    canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-    }, { passive: false });
+    const canvas = document.getElementById('gameCanvas');
+    const gameContainer = document.getElementById('game-container');
+    
+    // Target multiple elements to increase swipe area
+    const swipeTargets = [canvas, gameContainer].filter(el => el !== null);
+    
+    console.log('Swipe targets found:', swipeTargets.length);
+    
+    swipeTargets.forEach((target, index) => {
+        console.log(`Setting up swipe target ${index + 1}:`, target.id || target.tagName);
+        
+        target.addEventListener('touchstart', (e) => {
+            // Don't prevent default if touching a button
+            if (e.target.classList.contains('control-btn')) {
+                return;
+            }
+            
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            console.log('Swipe start:', { x: touchStartX, y: touchStartY });
+        }, { passive: false });
 
-    canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const touch = e.changedTouches[0];
-        touchEndX = touch.clientX;
-        touchEndY = touch.clientY;
-        handleSwipe();
-    }, { passive: false });
+        target.addEventListener('touchend', (e) => {
+            // Don't prevent default if touching a button
+            if (e.target.classList.contains('control-btn')) {
+                return;
+            }
+            
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            touchEndX = touch.clientX;
+            touchEndY = touch.clientY;
+            console.log('Swipe end:', { x: touchEndX, y: touchEndY });
+            handleSwipe();
+        }, { passive: false });
 
-    // Prevent scrolling on canvas touch
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-    }, { passive: false });
+        // Prevent scrolling on touch move, but allow button touches
+        target.addEventListener('touchmove', (e) => {
+            if (!e.target.classList.contains('control-btn')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    });
 }
 
 function handleSwipe() {
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
-    const minSwipeDistance = 30; // Minimum distance for a swipe
+    const minSwipeDistance = 50; // Increased minimum distance for more reliable detection
+    
+    console.log('Swipe delta:', { deltaX, deltaY });
 
     // Check if swipe distance is significant enough
     if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
+        console.log('Swipe too short, ignoring');
         return;
     }
 
+    let direction = '';
+    
     // Determine swipe direction (prioritize the larger movement)
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe
         if (deltaX > 0) {
+            direction = 'RIGHT';
+            console.log('Swipe detected: RIGHT');
             movePlayer('right');
         } else {
+            direction = 'LEFT';
+            console.log('Swipe detected: LEFT');
             movePlayer('left');
         }
     } else {
         // Vertical swipe
         if (deltaY > 0) {
+            direction = 'DOWN';
+            console.log('Swipe detected: DOWN');
             movePlayer('down');
         } else {
+            direction = 'UP';
+            console.log('Swipe detected: UP');
             movePlayer('up');
         }
+    }
+    
+    // Visual feedback for swipe detection
+    showSwipeIndicator(direction);
+}
+
+// Visual indicator for swipe detection (for debugging)
+function showSwipeIndicator(direction) {
+    if (gameMessageDisplay) {
+        const originalText = gameMessageDisplay.textContent;
+        const originalColor = gameMessageDisplay.style.color;
+        
+        gameMessageDisplay.textContent = `Swipe ${direction} detected!`;
+        gameMessageDisplay.style.color = '#00FFFF';
+        
+        setTimeout(() => {
+            if (gameMessageDisplay.textContent === `Swipe ${direction} detected!`) {
+                gameMessageDisplay.textContent = originalText;
+                gameMessageDisplay.style.color = originalColor;
+            }
+        }, 1000);
     }
 }
 
@@ -392,17 +452,39 @@ function setupMobileControlsEnhanced() {
     setupButton(moveRightBtn, 'right');
 }
 
+// Enhanced initialization with better error handling
+function initializeMobileFeatures() {
+    console.log('Initializing mobile features...');
+    
+    try {
+        setupMobileControlsEnhanced();
+    } catch (error) {
+        console.error('Error setting up mobile controls:', error);
+    }
+    
+    try {
+        setupSwipeControls();
+    } catch (error) {
+        console.error('Error setting up swipe controls:', error);
+    }
+}
+
 // Initialize mobile controls when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    setupMobileControlsEnhanced();
-    setupSwipeControls();
+    initializeMobileFeatures();
 });
 
 // Also try to initialize after a short delay in case DOMContentLoaded already fired
 setTimeout(() => {
-    setupMobileControlsEnhanced();
-    setupSwipeControls();
-}, 100);
+    console.log('Backup initialization triggered');
+    initializeMobileFeatures();
+}, 500);
+
+// And another backup after game elements are loaded
+setTimeout(() => {
+    console.log('Late initialization triggered');
+    initializeMobileFeatures();
+}, 2000);
 
 // --- Game Functions ---
 

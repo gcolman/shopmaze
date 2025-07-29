@@ -8,7 +8,19 @@
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
+        <div id="game-area">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        
+        <div id="game-info">
+            <h1>Red Hat Quest v2.0</h1>
+            <div id="redHatCounters"></div>
+            <h2>Coins: <span id="coinCount">0</span></h2>
+            <div id="shoppingBasket"></div>
+            <button id="checkoutButton">Checkout</button> 
+            <div id="gameMessage"></div>
+            <button id="restartButton">Restart Game</button>
+        </div>
         
         <div id="orderConfirmationOverlay" style="display:none;">
             <div class="order-confirmation-box">
@@ -93,19 +105,6 @@
                 <button id="closeInvoiceButton">Close Invoice</button>
             </div>
         </div>
-    </div>
-
-    <div id="sidebar">
-
-        <h1>Red Hat Quest v2.0</h1>
-        <div id="redHatCounters">
-            </div>
-        <h2>Coins: <span id="coinCount">0</span></h2>
-        <div id="shoppingBasket">
-            </div>
-        <button id="checkoutButton">Checkout</button> 
-        <div id="gameMessage"></div>
-        <button id="restartButton">Restart Game</button>
         
         <!-- Mobile Touch Controls -->
         <div id="mobileControls" class="mobile-controls">

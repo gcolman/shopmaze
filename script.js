@@ -249,7 +249,7 @@ document.addEventListener('keydown', (e) => {
     else if (e.code === 'Space') {
         e.preventDefault();
         stopContinuousMovement();
-        gameMessageDisplay.textContent = "Movement stopped. Use WASD or arrows to move.";
+        gameMessageDisplay.textContent = "Movement stopped. Use WASD/arrows, swipe to move, or tap to stop.";
         gameMessageDisplay.style.color = '#FFFF00';
     }
 });
@@ -265,7 +265,7 @@ let continuousMovement = {
     active: false,
     direction: null,
     intervalId: null,
-    speed: 200 // milliseconds between moves (faster for smoother continuous movement)
+    speed: 150 // milliseconds between moves (faster for responsive movement)
 };
 
 
@@ -274,10 +274,7 @@ let continuousMovement = {
 
 
 
-// Enhanced swipe gesture support with debugging and double-tap detection
-let lastTapTime = 0;
-const doubleTapDelay = 300; // milliseconds
-
+// Enhanced swipe gesture support
 function setupSwipeControls() {
     console.log('Setting up swipe controls...');
     
@@ -307,17 +304,6 @@ function setupSwipeControls() {
             touchEndY = touch.clientY;
             console.log('Swipe end:', { x: touchEndX, y: touchEndY });
             
-            // Check for double-tap
-            const currentTime = Date.now();
-            if (currentTime - lastTapTime < doubleTapDelay) {
-                console.log('Double-tap detected - stopping movement');
-                stopContinuousMovement();
-                gameMessageDisplay.textContent = "Movement stopped. Swipe to move again.";
-                gameMessageDisplay.style.color = '#FFFF00';
-                return;
-            }
-            lastTapTime = currentTime;
-            
             handleSwipe();
         }, { passive: false });
 
@@ -328,48 +314,7 @@ function setupSwipeControls() {
     });
 }
 
-function handleSwipe() {
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
-    const minSwipeDistance = 30; // Reduced for more responsive detection
-    
-    console.log('Swipe delta:', { deltaX, deltaY });
 
-    // Check if swipe distance is significant enough (tap vs swipe)
-    if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
-        console.log('Tap detected (not a swipe), ignoring');
-        return;
-    }
-
-    let direction = '';
-    
-    // Determine swipe direction (prioritize the larger movement)
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        // Horizontal swipe
-        if (deltaX > 0) {
-            direction = 'right';
-            console.log('Swipe detected: RIGHT');
-        } else {
-            direction = 'left';
-            console.log('Swipe detected: LEFT');
-        }
-    } else {
-        // Vertical swipe
-        if (deltaY > 0) {
-            direction = 'down';
-            console.log('Swipe detected: DOWN');
-        } else {
-            direction = 'up';
-            console.log('Swipe detected: UP');
-        }
-    }
-    
-    // Start continuous movement in the swiped direction
-    startContinuousMovement(direction);
-    
-    // Visual feedback for swipe detection
-    showSwipeIndicator(direction.toUpperCase());
-}
 
 // Continuous movement functions
 function startContinuousMovement(direction) {
@@ -424,21 +369,60 @@ function continuousMove() {
     }
 }
 
-// Visual indicator for swipe detection (for debugging)
+function handleSwipe() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const minSwipeDistance = 30; // Minimum distance for swipe detection
+    
+    console.log('Swipe delta:', { deltaX, deltaY });
+
+    // Check if this is a tap (short distance) - use for stopping movement
+    if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
+        console.log('Tap detected - stopping movement');
+        stopContinuousMovement();
+        
+        if (gameMessageDisplay) {
+            gameMessageDisplay.textContent = "Movement stopped. Swipe to move again.";
+            gameMessageDisplay.style.color = '#FFFF00';
+        }
+        return;
+    }
+
+    let direction = '';
+    
+    // Determine swipe direction (prioritize the larger movement)
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (deltaX > 0) {
+            direction = 'right';
+            console.log('Swipe detected: RIGHT');
+        } else {
+            direction = 'left';
+            console.log('Swipe detected: LEFT');
+        }
+    } else {
+        // Vertical swipe
+        if (deltaY > 0) {
+            direction = 'down';
+            console.log('Swipe detected: DOWN');
+        } else {
+            direction = 'up';
+            console.log('Swipe detected: UP');
+        }
+    }
+    
+    // Start continuous movement in the swiped direction
+    startContinuousMovement(direction);
+    
+    // Visual feedback for swipe detection
+    showSwipeIndicator(direction.toUpperCase());
+}
+
+// Visual indicator for swipe detection
 function showSwipeIndicator(direction) {
     if (gameMessageDisplay) {
-        const originalText = gameMessageDisplay.textContent;
-        const originalColor = gameMessageDisplay.style.color;
-        
-        gameMessageDisplay.textContent = `Moving ${direction}! Swipe to change direction.`;
+        gameMessageDisplay.textContent = `Moving ${direction}! Swipe to change direction or tap to stop.`;
         gameMessageDisplay.style.color = '#00FFFF';
-        
-        setTimeout(() => {
-            if (gameMessageDisplay.textContent === `Moving ${direction}! Swipe to change direction.`) {
-                gameMessageDisplay.textContent = originalText;
-                gameMessageDisplay.style.color = originalColor;
-            }
-        }, 2000);
     }
 }
 
@@ -446,7 +430,7 @@ function showSwipeIndicator(direction) {
 
 // Enhanced initialization for swipe controls
 function initializeMobileFeatures() {
-    console.log('Initializing mobile features...');
+    console.log('Initializing mobile swipe features...');
     
     try {
         setupSwipeControls();

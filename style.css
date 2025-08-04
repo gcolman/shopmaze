@@ -133,6 +133,9 @@ body {
     cursor: pointer;
     margin-top: 15px; /* Less margin */
     width: 100%;
+    touch-action: manipulation; /* Improve touch responsiveness */
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1); /* Better touch feedback */
+    user-select: none; /* Prevent text selection on touch */
 }
 #checkoutButton:hover, #restartButton:hover {
     background-color: #0056b3;
@@ -160,40 +163,39 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%; /* Spans over the whole game-container */
+    width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.95); /* More opaque background */
-    color: #333; /* Default text color for invoice content */
-    display: flex; /* Will be toggled to 'flex' by JS */
+    background-color: rgba(0, 0, 0, 0.95);
+    color: #333;
+    display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 10px; /* Reduced padding */
+    padding: 10px;
     box-sizing: border-box;
-    z-index: 10; /* Ensures it's on top of game canvas */
-    font-family: 'Roboto', sans-serif; /* A more "document" like font */
+    z-index: 10;
+    font-family: 'Roboto', sans-serif;
 }
 
 .invoice-box {
-    /* Adjusted for smaller screen fit */
-    width: 95%; /* Use almost full width of game-container */
-    max-width: 580px; /* Max width slightly less than game-container width */
-    height: 95%; /* Use almost full height of game-container */
-    max-height: 460px; /* Max height slightly less than game-container height */
-
+    width: 90%;
+    max-width: 500px;
+    height: auto;
+    max-height: 80%;
     background: #fff;
-    padding: 15px; /* Reduced padding */
-    border: 1px solid #eee;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-    font-size: 13px; /* Smaller base font size */
-    line-height: 18px; /* Adjusted line height */
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1.5;
     box-sizing: border-box;
-    text-align: left; /* Align content inside box to left */
-    display: flex; /* Make invoice box content flex */
-    flex-direction: column; /* Stack sections vertically */
-    overflow-y: auto; /* Make entire invoice scrollable */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
     
-    /* Firefox scrollbar styling */
+    /* Scrollbar styling for invoice */
     scrollbar-width: thin;
     scrollbar-color: #888 #f1f1f1;
 }
@@ -209,6 +211,7 @@ body {
 
 
 .invoice-header {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -216,8 +219,6 @@ body {
     padding-bottom: 8px;
     border-bottom: 1px solid #eee;
     flex-shrink: 0; /* Prevent header from shrinking */
-    position: sticky;
-    top: 0;
     background: #fff;
     z-index: 2;
 }
@@ -381,16 +382,19 @@ body {
 }
 
 #closeInvoiceButton {
-    padding: 8px 15px;
-    font-size: 1.1em;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    font-size: 0.9em;
     background-color: #dc3545;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    margin-top: 15px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    flex-shrink: 0;
+    z-index: 10;
 }
 #closeInvoiceButton:hover {
     background-color: #c82333;
@@ -527,10 +531,21 @@ body {
     border-bottom: none;
 }
 
+.order-item-quantity {
+    font-size: 12px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #1e40af;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
 .order-item-info {
     display: flex;
     align-items: center;
-    flex-grow: 1;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .order-item-info img {
@@ -569,6 +584,8 @@ body {
     justify-content: space-between;
     gap: 15px;
     margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
 }
 
 .order-button {
@@ -580,6 +597,9 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    user-select: none;
 }
 
 .cancel-button {
@@ -1013,4 +1033,113 @@ body {
         font-size: 14px;
     }
 }
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+    
+    #game-area {
+        width: 100vw;
+        height: 85vh;
+        border-radius: 0;
+        margin: 0;
+    }
+    
+    #gameCanvas {
+        border-radius: 0;
+        width: 100%;
+        height: auto;
+    }
+    
+    /* Header mobile adjustments */
+    #game-header {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+    
+    .game-title {
+        font-size: 1.1em;
+    }
+    
+    .counter-icon {
+        width: 15px;
+        height: 15px;
+    }
+    
+    .red-hat-counters .counter-group {
+        padding: 2px 6px;
+    }
+    
+    .red-hat-counters .counter-group img {
+        width: 15px;
+        height: 15px;
+    }
+    
+    /* Bottom bar mobile adjustments */
+    #game-bottom-bar {
+        padding: 6px 10px;
+        font-size: 0.85em;
+    }
+    
+    .bottom-icon {
+        width: 15px;
+        height: 15px;
+    }
+    
+    /* Game over overlay mobile adjustments */
+    #gameOverlay .overlay-content {
+        width: 95%;
+        max-width: none;
+        padding: 15px;
+    }
+    
+    .overlay-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .overlay-buttons button {
+        width: 100%;
+        padding: 12px;
+        font-size: 1em;
+    }
+    
+    /* Order confirmation mobile adjustments */
+    .order-confirmation-box {
+        width: 95%;
+        max-width: none;
+        height: 90%;
+        padding: 10px;
+    }
+    
+    .order-actions {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 15px;
+        padding-top: 10px;
+    }
+    
+    .order-button {
+        width: 100%;
+        padding: 12px;
+        font-size: 1em;
+    }
+    
+    .order-items-list {
+        max-height: 300px;
+    }
+    
+    .order-item {
+        padding: 8px;
+    }
+    
+    .order-item img {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+
 

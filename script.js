@@ -74,6 +74,7 @@ let player = {
 // Array to hold all active ghost instances
 let activeGhosts = []; 
 let ghostSpawnTimer = null; // Timeout for initial ghost appearance
+let pendingGhostSpawn = false; // Track if there's a pending ghost spawn retry
 let ghostRecurringSpawnTimerId = null; // Interval for managing recurring spawns
 let ghostMovementIntervalId = null; // Single global interval for ghost movement logic
 
@@ -715,15 +716,17 @@ function resetTShirtInLevel() {
 // Spawns a single ghost instance and adds it to activeGhosts array (2D Context)
 function spawnGhostRandomly() { 
     if (gameOver || activeGhosts.length >= MAX_GHOSTS) { // Don't spawn if game over or max ghosts reached
+        pendingGhostSpawn = false; // Clear pending flag
         return;
     }
 
     let spawnGridX, spawnGridY;
     let foundSpot = false;
-    const maxAttempts = 100;
     let attempts = 0;
+    const maxAttemptsPerTry = 100;
 
-    while (!foundSpot && attempts < maxAttempts) {
+    // Try to find a valid spawn location
+    while (!foundSpot && attempts < maxAttemptsPerTry) {
         spawnGridX = Math.floor(Math.random() * MAZE_WIDTH_TILES);
         spawnGridY = Math.floor(Math.random() * MAZE_HEIGHT_TILES);
 
@@ -731,7 +734,7 @@ function spawnGhostRandomly() {
             !(spawnGridX === player.gridX && spawnGridY === player.gridY) && // Not player's spot
             !activeGhosts.some(g => g.gridX === spawnGridX && g.gridY === spawnGridY) && // Not on another ghost's spot
             !coins.some(c => !c.collected && c.gridX === spawnGridX && c.gridY === spawnGridY) && // Not a coin's spot
-            !tShirtInLevel // Ensure not on T-shirt spot
+            (!tShirtInLevel || !(tShirtInLevel.gridX === spawnGridX && tShirtInLevel.gridY === spawnGridY)) // Not on T-shirt spot
            ) {
             foundSpot = true;
         }
@@ -751,12 +754,22 @@ function spawnGhostRandomly() {
         };
         
         activeGhosts.push(newGhost); // Add to the array
+        pendingGhostSpawn = false; // Clear pending flag on success
         
-        // Ghost spawned (message display removed)
+        console.log(`Ghost spawned successfully after ${attempts} attempts`);
 
         // Ghost movement logic is driven by the single global ghostMovementIntervalId
     } else {
-        // Could not spawn ghost (message display removed)
+        // If we couldn't find a spot, try again after a short delay
+        console.log(`Retrying ghost spawn after ${attempts} failed attempts...`);
+        pendingGhostSpawn = true; // Set pending flag
+        setTimeout(() => {
+            if (!gameOver && activeGhosts.length < MAX_GHOSTS) {
+                spawnGhostRandomly(); // Recursive retry with conditions check
+            } else {
+                pendingGhostSpawn = false; // Clear flag if conditions no longer met
+            }
+        }, 1000); // Wait 1 second before retrying
     }
 }
 
@@ -887,8 +900,8 @@ function updateUI() {
     if (tshirtTotalDisplay) {
         tshirtTotalDisplay.textContent = shoppingBasket.length;
     }
-    // Enable/disable checkout button based on basket content
-    if (checkoutButtonElement) { // Check if element exists
+    // Enable/disable checkout button based on basket content (only if game is over and overlay is visible)
+    if (checkoutButtonElement && gameOver) { // Check if element exists and game is over
         checkoutButtonElement.disabled = shoppingBasket.length === 0;
     }
 }
@@ -899,10 +912,16 @@ function endGame(message) {
     gameOver = true;
     stopContinuousMovement(); // Stop continuous movement on game over
     
-    // Show game over overlay
+    // Show game over overlay with checkout button enabled/disabled based on basket
     if (gameOverlay && overlayTitle) {
         overlayTitle.textContent = message || "Game Over!";
         gameOverlay.style.display = 'flex';
+        
+        // Show checkout button and enable/disable based on basket content
+        if (checkoutButtonElement) {
+            checkoutButtonElement.style.display = 'inline-block'; // Ensure button is visible on game over
+            checkoutButtonElement.disabled = shoppingBasket.length === 0;
+        }
     }
     
     // Clear all ghost-related timers/intervals
@@ -919,6 +938,11 @@ function endGame(message) {
 function restartGame() {
     // Hide game over overlay
     if (gameOverlay) gameOverlay.style.display = 'none';
+    
+    // Reset checkout button visibility for new game
+    if (checkoutButtonElement) {
+        checkoutButtonElement.style.display = 'inline-block';
+    }
     
     gameOver = false;
     currentLevelIndex = 0;
@@ -948,16 +972,24 @@ function restartGame() {
 
     gameLoop(); // Ensure game loop is running
 }
-// Attach restart button listener (check if element exists)
+// Attach restart button listeners (check if element exists)
 if (restartButtonElement) { 
     restartButtonElement.addEventListener('click', restartGame);
+    restartButtonElement.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        restartGame();
+    });
 }
 
 
 // --- Function to manage recurring ghost spawns ---
 function manageRecurringGhostSpawns() {
     if (!gameOver && activeGhosts.length < MAX_GHOSTS && player.redHats > 0) {
-        spawnGhostRandomly();
+        // Only spawn if we don't already have a pending retry
+        if (!pendingGhostSpawn) {
+            spawnGhostRandomly();
+        }
     }
 }
 
@@ -988,13 +1020,35 @@ function showOrderConfirmation() {
 
     stopContinuousMovement(); // Stop continuous movement when showing order confirmation
     gameActive = false; // Pause game loop
+    
+    // Hide game over overlay and show the order confirmation overlay
+    if (gameOverlay) gameOverlay.style.display = 'none';
     orderConfirmationOverlay.style.display = 'flex'; // Show order confirmation overlay
 
-    // Populate order items
+    // Populate order items (grouped by t-shirt type)
     orderItemsList.innerHTML = ''; // Clear previous items
     let totalCost = 0;
 
+    // Group items by ID and sum quantities
+    const groupedItems = {};
     shoppingBasket.forEach(item => {
+        if (groupedItems[item.id]) {
+            groupedItems[item.id].quantity += 1;
+            groupedItems[item.id].totalCost += item.cost;
+        } else {
+            groupedItems[item.id] = {
+                id: item.id,
+                src: item.src,
+                cost: item.cost,
+                quantity: 1,
+                totalCost: item.cost
+            };
+        }
+        totalCost += item.cost;
+    });
+
+    // Display grouped items
+    Object.values(groupedItems).forEach(item => {
         const orderItemDiv = document.createElement('div');
         orderItemDiv.className = 'order-item';
         
@@ -1002,15 +1056,15 @@ function showOrderConfirmation() {
             <div class="order-item-info">
                 <img src="${item.src}" alt="${item.id}">
                 <span class="order-item-name">${item.id} T-Shirt</span>
+                <span class="order-item-quantity">Qty: ${item.quantity}</span>
             </div>
-            <span class="order-item-price">${item.cost} coins</span>
+            <span class="order-item-price">£${item.totalCost}</span>
         `;
         
         orderItemsList.appendChild(orderItemDiv);
-        totalCost += item.cost;
     });
 
-    orderTotalDisplay.textContent = totalCost + " coins";
+    orderTotalDisplay.textContent = "£" + totalCost;
 
     // Order confirmation displayed
 }
@@ -1019,7 +1073,9 @@ function closeOrderConfirmation() {
     if (orderConfirmationOverlay) {
         orderConfirmationOverlay.style.display = 'none'; // Hide order confirmation overlay
     }
-    gameActive = true; // Resume game loop
+    
+    // Restart the game instead of returning to overlay
+    restartGame();
 }
 
 // --- Invoice Generation and Display Functions ---
@@ -1036,8 +1092,10 @@ function generateInvoice() {
         return;
     }
 
-    // Close order confirmation if it's open
-    closeOrderConfirmation();
+    // Hide order confirmation overlay without restarting game
+    if (orderConfirmationOverlay) {
+        orderConfirmationOverlay.style.display = 'none';
+    }
     
     stopContinuousMovement(); // Stop continuous movement when showing invoice
     gameActive = false; // Pause game loop
@@ -1051,27 +1109,51 @@ function generateInvoice() {
     invoiceItemsDisplay.innerHTML = ''; // Clear previous items
     let totalCost = 0;
 
-    // Add items directly to the existing tbody element
+    // Group items by ID and sum quantities for invoice
+    const groupedItems = {};
     shoppingBasket.forEach(item => {
-        const itemRow = document.createElement('tr');
-        itemRow.innerHTML = `
-            <td><div class="item-description"><img src="${item.src}" alt="${item.id}"> ${item.id} T-Shirt</div></td>
-            <td>1</td>
-            <td>${item.cost}</td>
-            <td style="text-align: right;">${item.cost}</td>
-        `;
-        invoiceItemsDisplay.appendChild(itemRow);
+        if (groupedItems[item.id]) {
+            groupedItems[item.id].quantity += 1;
+            groupedItems[item.id].totalCost += item.cost;
+        } else {
+            groupedItems[item.id] = {
+                id: item.id,
+                src: item.src,
+                cost: item.cost,
+                quantity: 1,
+                totalCost: item.cost
+            };
+        }
         totalCost += item.cost;
     });
 
+    // Add grouped items to invoice table
+    Object.values(groupedItems).forEach(item => {
+        const itemRow = document.createElement('tr');
+        itemRow.innerHTML = `
+            <td><div class="item-description"><img src="${item.src}" alt="${item.id}"> ${item.id} T-Shirt</div></td>
+            <td>${item.quantity}</td>
+            <td>£${item.cost}</td>
+            <td style="text-align: right;">£${item.totalCost}</td>
+        `;
+        invoiceItemsDisplay.appendChild(itemRow);
+    });
 
-    invoiceSubtotalDisplay.textContent = totalCost + " coins";
-    invoiceTotalDisplay.textContent = totalCost + " coins";
+
+    invoiceSubtotalDisplay.textContent = "£" + totalCost;
+    invoiceTotalDisplay.textContent = "£" + totalCost;
 
     // Invoice generated
 
     // Attach listener for close button 
-    closeInvoiceButton.onclick = closeInvoice;
+    if (closeInvoiceButton) {
+        closeInvoiceButton.addEventListener('click', closeInvoice);
+        closeInvoiceButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeInvoice();
+        });
+    }
 }
 
 function closeInvoice() { 
@@ -1079,6 +1161,16 @@ function closeInvoice() {
         invoiceOverlay.style.display = 'none'; // Hide invoice overlay
     }
     gameActive = true; // Resume game loop
+    
+    // Show game over overlay again but hide checkout button since order is complete
+    if (gameOver && gameOverlay) {
+        gameOverlay.style.display = 'flex';
+        
+        // Hide checkout button after completing an order
+        if (checkoutButtonElement) {
+            checkoutButtonElement.style.display = 'none';
+        }
+    }
 }
 // END NEW FUNCTIONS
 
@@ -1145,19 +1237,36 @@ function initializeGameElements() {
     // Game initialized - welcome message removed (no UI element for messages)
     if (restartButtonElement) restartButtonElement.style.display = 'none'; // Ensure restart button is hidden at start
     
-    // Attach checkout button listener when elements are guaranteed to exist
+    // Attach checkout button listeners when elements are guaranteed to exist
     if (checkoutButtonElement) { 
         checkoutButtonElement.addEventListener('click', showOrderConfirmation); // Show order confirmation first
+        checkoutButtonElement.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!checkoutButtonElement.disabled) {
+                showOrderConfirmation();
+            }
+        });
         checkoutButtonElement.disabled = true; // Initially disabled if basket is empty
     }
 
     // Attach order confirmation button listeners
     if (cancelOrderButton) {
         cancelOrderButton.addEventListener('click', closeOrderConfirmation);
+        cancelOrderButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeOrderConfirmation();
+        });
     }
 
     if (placeOrderButton) {
         placeOrderButton.addEventListener('click', generateInvoice);
+        placeOrderButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            generateInvoice();
+        });
     }
 }
 

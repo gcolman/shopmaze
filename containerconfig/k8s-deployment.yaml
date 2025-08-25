@@ -1,0 +1,196 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redhat-quest
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    app.kubernetes.io/name: redhat-quest
+    app.kubernetes.io/component: game
+    app.kubernetes.io/part-of: redhat-quest-app
+    app.kubernetes.io/version: "2.1-websocket"
+  annotations:
+    app.openshift.io/route-disabled: 'false'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redhat-quest
+  template:
+    metadata:
+      labels:
+        app: redhat-quest
+        deployment: redhat-quest
+    spec:
+      containers:
+      - name: redhat-quest
+        image: redhat-quest:2.1-websocket
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: websocket
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: WEBSOCKET_PORT
+          value: "8080"
+        - name: HTTP_PORT
+          value: "8000"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+            - ALL
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      dnsPolicy: ClusterFirst
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redhat-quest-http
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    service-type: http
+  annotations:
+    service.alpha.openshift.io/dependencies: '[{"name": "redhat-quest-websocket", "kind": "Service"}]'
+spec:
+  type: ClusterIP
+  selector:
+    app: redhat-quest
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redhat-quest-websocket
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    service-type: websocket
+spec:
+  type: ClusterIP
+  selector:
+    app: redhat-quest
+  ports:
+  - name: websocket
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: leaderboard-api
+    port: 8081
+    targetPort: 8080
+    protocol: TCP
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-http
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    route-type: http
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  to:
+    kind: Service
+    name: redhat-quest-http
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-websocket
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    route-type: websocket
+  annotations:
+    haproxy.router.openshift.io/timeout: 300s
+    haproxy.router.openshift.io/proxy-read-timeout: 300s
+    haproxy.router.openshift.io/proxy-write-timeout: 300s
+spec:
+  to:
+    kind: Service
+    name: redhat-quest-websocket
+    weight: 100
+  port:
+    targetPort: websocket
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-api
+  namespace: gcolman1-dev
+  labels:
+    app: redhat-quest
+    route-type: api
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  path: /leaderboard
+  to:
+    kind: Service
+    name: redhat-quest-websocket
+    weight: 100
+  port:
+    targetPort: leaderboard-api
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+

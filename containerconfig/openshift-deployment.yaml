@@ -1,0 +1,334 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: redhat-quest-sa
+  labels:
+    app: redhat-quest-game
+  annotations:
+    description: "Service account for Red Hat Quest game"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redhat-quest-game
+  labels:
+    app: redhat-quest-game
+    app.kubernetes.io/name: redhat-quest-game
+    app.kubernetes.io/component: game-server
+    app.kubernetes.io/part-of: redhat-quest-app
+    app.kubernetes.io/version: "2.1-websocket"
+    app.openshift.io/runtime: nodejs
+  annotations:
+    app.openshift.io/route-disabled: 'false'
+    description: "Red Hat Quest Game with WebSocket support for real-time gameplay"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redhat-quest-game
+  template:
+    metadata:
+      labels:
+        app: redhat-quest-game
+        deployment: redhat-quest-game
+    spec:
+      serviceAccountName: redhat-quest-sa
+      containers:
+      - name: redhat-quest-game
+        image: quay.io/uk_redhatdemo/summitconnect/redhat-quest
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: websocket
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: WEBSOCKET_PORT
+          value: "8080"
+        - name: HTTP_PORT
+          value: "8000"
+        - name: WEBSOCKET_URL
+          valueFrom:
+            configMapKeyRef:
+              name: shopmaze-websocket-config
+              key: websocket-url
+        volumeMounts:
+        - name: config-volume
+          mountPath: /opt/app-root/src/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config-volume
+        configMap:
+          name: shopmaze-config
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      dnsPolicy: ClusterFirst
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redhat-quest-http-service
+  labels:
+    app: redhat-quest-game
+    service-type: http
+  annotations:
+    description: "HTTP service for the Red Hat Quest game web interface"
+spec:
+  type: ClusterIP
+  selector:
+    app: redhat-quest-game
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+    protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redhat-quest-websocket-service
+  labels:
+    app: redhat-quest-game
+    service-type: websocket
+  annotations:
+    description: "WebSocket service for real-time game communication"
+spec:
+  type: ClusterIP
+  selector:
+    app: redhat-quest-game
+  ports:
+  - name: websocket
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-game-route
+  labels:
+    app: redhat-quest-game
+    route-type: http
+  annotations:
+    description: "Main game application route"
+    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/hsts_header: "max-age=31536000;includeSubDomains;preload"
+spec:
+  to:
+    kind: Service
+    name: redhat-quest-http-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-websocket-route
+  labels:
+    app: redhat-quest-game
+    route-type: websocket
+  annotations:
+    description: "WebSocket route for real-time game communication"
+    haproxy.router.openshift.io/timeout: 300s
+    haproxy.router.openshift.io/proxy-read-timeout: 300s
+    haproxy.router.openshift.io/proxy-write-timeout: 300s
+    haproxy.router.openshift.io/balance: source
+    haproxy.router.openshift.io/disable_cookies: "true"
+spec:
+  to:
+    kind: Service
+    name: redhat-quest-websocket-service
+    weight: 100
+  port:
+    targetPort: websocket
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-admin-route
+  labels:
+    app: redhat-quest-game
+    route-type: admin
+  annotations:
+    description: "Admin panel route for game management"
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  path: /admin.html
+  to:
+    kind: Service
+    name: redhat-quest-http-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: redhat-quest-leaderboard-route
+  labels:
+    app: redhat-quest-game
+    route-type: leaderboard
+  annotations:
+    description: "Leaderboard route for viewing game statistics"
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  path: /leaderboard.html
+  to:
+    kind: Service
+    name: redhat-quest-http-service
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redhat-quest-config
+  labels:
+    app: redhat-quest-game
+data:
+  game-config.json: |
+    {
+      "websocket": {
+        "port": 8080,
+        "path": "/ws"
+      },
+      "http": {
+        "port": 8000
+      },
+      "game": {
+        "maxPlayers": 100,
+        "sessionTimeout": 3600000
+      }
+    }
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redhat-quest-network-policy
+  labels:
+    app: redhat-quest-game
+spec:
+  podSelector:
+    matchLabels:
+      app: redhat-quest-game
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: openshift-ingress
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8080
+  egress:
+  - {}
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: redhat-quest-hpa
+  labels:
+    app: redhat-quest-game
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: redhat-quest-game
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15

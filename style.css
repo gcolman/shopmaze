@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    padding: 10px;
+    padding: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #222;
     background-image: url('assets/background.png');
@@ -8,57 +8,227 @@ body {
     background-repeat: no-repeat;
     background-position: center center;
     color: #eee;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow: hidden;
     box-sizing: border-box;
+    /* Safe area support for devices with notches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+/* Registration Overlay Styles */
+.registration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+}
+
+.registration-box {
+    background-color: #1a1a1a;
+    border-radius: 15px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    border: 2px solid #333;
+    text-align: center;
+}
+
+.registration-header h1 {
+    color: #FFC107;
+    margin-bottom: 15px;
+    font-size: 2em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.registration-header p {
+    color: #ccc;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+    line-height: 1.5;
+}
+
+.registration-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #FFC107;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+#emailInput {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background-color: #333;
+    color: #fff;
+    font-size: 1.1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+#emailInput:focus {
+    outline: none;
+    border-color: #FFC107;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+}
+
+#emailInput.error {
+    border-color: #dc3545;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.3);
+}
+
+.error-message {
+    display: none;
+    color: #dc3545;
+    font-size: 0.9em;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.register-button {
+    padding: 15px 30px;
+    background: linear-gradient(45deg, #FFC107, #ff9800);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.register-button:hover {
+    background: linear-gradient(45deg, #ff9800, #FFC107);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+}
+
+.register-button:disabled {
+    background: #666;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.loading-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    color: #FFC107;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #333;
+    border-top: 4px solid #FFC107;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-message p {
+    margin: 0;
+    font-size: 1.1em;
+}
+
+/* Mobile responsiveness for registration */
+@media (max-width: 600px) {
+    .registration-box {
+        padding: 25px;
+        margin: 20px;
+    }
+    
+    .registration-header h1 {
+        font-size: 1.5em;
+    }
+    
+    .registration-header p {
+        font-size: 1em;
+    }
+    
+    .register-button {
+        padding: 12px 25px;
+        font-size: 1.1em;
+    }
 }
 
 #game-container {
     position: relative;
-    max-width: 600px;
-    margin: 0 auto;
+    width: 100vw;
+    width: 100dvw; /* Dynamic viewport width for mobile */
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 20px;
     background-color: #1a1a1a;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 0 25px rgba(0,0,0,0.6);
+    padding: 0;
+    box-sizing: border-box;
+    /* Handle safe areas */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 #game-area {
+    flex: 1;
     width: 100%;
-    max-width: 600px;
-    border: 5px solid #555;
-    border-radius: 10px;
+    height: 100%;
+    border: none;
+    border-radius: 0;
     overflow: hidden;
-    margin: 0 auto;
+    margin: 0;
     display: flex;
     flex-direction: column;
     position: relative;
 }
 
 #gameCanvas {
-    border-radius: 5px 5px 0 0;
-}
-
-#gameCanvas {
+    border-radius: 0;
+    position: relative;
+    z-index: 1;
     background-color: #333;
     display: block;
     width: 100%;
     height: 100%;
+    object-fit: contain;
 }
 
-#game-info {
-    background-color: #2a2a2a;
-    padding: 20px;
-    border-radius: 5px;
-    border: 2px solid #555;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 15px;
-}
+/* Remove the #game-info styles since we don't use it in fullscreen mode */
 
 #sidebar h1 {
     font-size: 1.8em;
@@ -173,7 +343,7 @@ body {
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
-    z-index: 10;
+    z-index: 1600; /* Below pause overlay but above order confirmation */
     font-family: 'Roboto', sans-serif;
 }
 
@@ -368,33 +538,39 @@ body {
 }
 
 
-.invoice-footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 0.8em;
-    color: #777;
-    border-top: 1px solid #eee;
-    padding-top: 10px;
-    flex-shrink: 0;
-}
-.invoice-footer p {
-    margin: 4px 0;
-}
+
 
 #closeInvoiceButton {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 8px 16px;
-    font-size: 0.9em;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1em;
     background-color: #dc3545;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    z-index: 10;
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+/* Invoice table styling improvements */
+.invoice-table tfoot .subtotal-row {
+    border-top: 2px solid #ddd;
+    font-weight: bold;
+}
+
+.invoice-table tfoot td {
+    padding-top: 15px;
+    padding-bottom: 10px;
+}
+
+/* Place order button loading state */
+.place-order-button:disabled {
+    background-color: #6c757d !important;
+    color: #fff !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
 }
 #closeInvoiceButton:hover {
     background-color: #c82333;
@@ -436,7 +612,7 @@ body {
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
-    z-index: 10;
+    z-index: 1500; /* Below pause overlay but above game overlay */
     font-family: 'Roboto', sans-serif;
 }
 
@@ -666,14 +842,94 @@ body {
         margin: 0;
     }
 
-
-}
-
-    /* Adjust canvas for mobile */
+    /* Game area takes remaining space in grid layout */
+    #game-area {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+        /* Debug: border: 2px solid green; */
+    }
+    
+    /* Canvas container takes most of game area */
+    #canvas-container {
+        flex: 1; /* Take most space */
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #000;
+        padding: 0;
+        margin: 0;
+        min-height: 0; /* Allow flex item to shrink */
+        overflow: hidden; /* Prevent overflow */
+    }
+    
     #gameCanvas {
+        width: 100%;
+        height: 100%;
         max-width: 100%;
-        height: auto;
-        border: 2px solid #333;
+        max-height: 100%;
+        object-fit: contain;
+        border: none;
+        background-color: #333;
+        display: block;
+    }
+    
+    /* Bottom bar as part of grid layout */
+    #game-bottom-bar {
+        width: 100%;
+        height: 25px;
+        min-height: 25px;
+        padding: 2px 8px;
+        box-sizing: border-box;
+        background: linear-gradient(135deg, #374151, #4b5563);
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        /* Debug: border: 2px solid blue; */
+    }
+    
+    .bottom-counter {
+        padding: 1px 3px;
+        gap: 2px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .bottom-icon {
+        width: 6px;
+        height: 6px;
+    }
+    
+    .bottom-counter span {
+        font-size: 8px;
+        font-weight: bold;
+        color: white;
+    }
+    
+    .bottom-user-info {
+        padding: 1px 3px;
+        gap: 1px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .user-id-label {
+        font-size: 7px;
+        color: white;
+    }
+    
+    #userIdDisplay {
+        font-size: 7px;
+        color: white;
     }
 
     /* Adjust game info panel for mobile */
@@ -755,14 +1011,20 @@ body {
     }
 }
 
-/* Game Header with Counters */
-#game-header {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    border-radius: 10px;
-    padding: 10px 15px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    border: 2px solid #60a5fa;
-    margin-bottom: 10px;
+/* Game Header with Counters - Desktop only */
+@media (min-width: 769px) {
+    #game-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.9), rgba(59, 130, 246, 0.9));
+        backdrop-filter: blur(10px);
+        padding: 10px 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        border-bottom: 2px solid #60a5fa;
+        z-index: 100;
+    }
 }
 
 .header-content {
@@ -839,65 +1101,127 @@ body {
     height: 18px;
 }
 
-/* Mobile responsive header */
+/* Mobile responsive layout - TRUE fullscreen */
 @media (max-width: 768px) {
+    body {
+        height: 100vh;
+        height: 100dvh;
+        height: -webkit-fill-available;
+        overflow: hidden;
+        background: #000; /* Black background instead of image */
+        padding: 0;
+        margin: 0;
+    }
+    
+    #game-container {
+        height: 100vh;
+        height: 100dvh;
+        height: -webkit-fill-available;
+        width: 100vw;
+        width: 100dvw;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #000;
+        display: grid;
+        grid-template-rows: auto 1fr auto; /* header, game area, footer */
+        grid-template-columns: 1fr;
+    }
+    
+    /* Header as part of grid layout */
     #game-header {
-        padding: 8px 10px;
-        margin-bottom: 8px;
+        width: 100%;
+        height: 30px;
+        min-height: 30px;
+        padding: 2px 8px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        border: none;
+        /* Debug: border: 2px solid red; */
     }
     
     .header-content {
-        gap: 15px;
+        gap: 8px;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
     
     .game-title {
-        font-size: 16px;
-    }
-    
-
-    
-    .lives-section {
-        gap: 8px;
-    }
-    
-    .lives-label {
-        font-size: 14px;
+        font-size: 11px;
+        font-weight: bold;
+        flex: 1;
+        text-align: center;
+        margin: 0;
+        color: white;
     }
     
     .counter-group {
-        padding: 4px 8px;
-        gap: 6px;
+        padding: 1px 3px;
+        gap: 2px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.3);
     }
     
     .counter-icon {
-        width: 15px;
-        height: 15px;
+        width: 8px;
+        height: 8px;
     }
     
     .counter-group span {
-        font-size: 14px;
+        font-size: 9px;
+        font-weight: bold;
+        color: white;
     }
     
-        .red-hat-counters .counter-group {
-        padding: 2px 6px;
+    .lives-section {
+        gap: 3px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .lives-label {
+        display: none;
+    }
+    
+    .red-hat-counters .counter-group {
+        padding: 1px 2px;
+        background: rgba(239, 68, 68, 0.3);
+        border: 1px solid rgba(239, 68, 68, 0.5);
     }
     
     .red-hat-counters .counter-group img {
-        width: 15px;
-        height: 15px;
+        width: 8px;
+        height: 8px;
     }
 }
 
-/* Game Bottom Bar */
-#game-bottom-bar {
-    background: linear-gradient(135deg, #374151, #4b5563);
-    border-radius: 0 0 10px 10px;
-    padding: 8px 15px;
-    border: 2px solid #6b7280;
-    border-top: 1px solid #9ca3af;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* Game Bottom Bar - Desktop only */
+@media (min-width: 769px) {
+    #game-bottom-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, rgba(55, 65, 81, 0.9), rgba(75, 85, 99, 0.9));
+        backdrop-filter: blur(10px);
+        padding: 8px 15px;
+        border-top: 2px solid #6b7280;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 100;
+    }
 }
 
 .bottom-counter {
@@ -923,24 +1247,182 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-/* Mobile responsive bottom bar */
+.bottom-user-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.1);
+    padding: 4px 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.user-id-label {
+    color: #d1d5db;
+    font-size: 12px;
+    font-weight: normal;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+#userIdDisplay {
+    color: #60a5fa;
+    font-weight: bold;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Mobile bottom bar styles are now included in the main mobile section above */
+
+/* Registration Overlay */
+.registration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.registration-box {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+}
+
+.registration-header h1 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 28px;
+}
+
+.registration-header p {
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.registration-form {
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input.error {
+    border-color: #e74c3c;
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 5px;
+    min-height: 18px;
+}
+
+.register-button {
+    width: 100%;
+    padding: 15px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.register-button:hover {
+    background: #5a6fd8;
+}
+
+.register-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.loading-message {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-message p {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
+
 @media (max-width: 768px) {
-    #game-bottom-bar {
-        padding: 6px 10px;
+    .registration-box {
+        padding: 30px 20px;
+        margin: 20px;
     }
     
-    .bottom-counter {
-        padding: 3px 8px;
-        gap: 6px;
+    .registration-header h1 {
+        font-size: 24px;
     }
     
-    .bottom-icon {
-        width: 14px;
-        height: 14px;
+    .registration-header p {
+        font-size: 14px;
     }
     
-    .bottom-counter span {
-        font-size: 12px;
+    .form-group input,
+    .register-button {
+        padding: 12px;
+        font-size: 14px;
     }
 }
 
@@ -955,8 +1437,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 10px;
-    z-index: 1000;
+    border-radius: 5px 5px 0 0; /* Match canvas border radius */
+    z-index: 500; /* Higher than canvas but below pause overlay */
 }
 
 .overlay-content {
@@ -1011,6 +1493,106 @@ body {
     position: relative;
 }
 
+/* Canvas container - Desktop only */
+@media (min-width: 769px) {
+    #canvas-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 0;
+    }
+}
+
+/* Pause Overlay - positioned directly over the canvas */
+#pauseOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px 5px 0 0; /* Match canvas border radius */
+    z-index: 1000; /* Higher than canvas (z-index: 1) */
+    backdrop-filter: blur(5px);
+    pointer-events: auto; /* Ensure it captures pointer events */
+}
+
+.pause-overlay-content {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    border: 3px solid #fbbf24;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    max-width: 400px;
+    animation: pausePulse 2s ease-in-out infinite alternate;
+}
+
+.pause-icon {
+    font-size: 4em;
+    margin-bottom: 20px;
+    animation: pauseIconBounce 1.5s ease-in-out infinite;
+}
+
+.pause-overlay-content h2 {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.pause-overlay-content p {
+    color: #fef3c7;
+    font-size: 16px;
+    margin: 0;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Pause overlay animations */
+@keyframes pausePulse {
+    0% { transform: scale(1); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    100% { transform: scale(1.02); box-shadow: 0 12px 40px rgba(0,0,0,0.7); }
+}
+
+@keyframes pauseIconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Mobile responsive pause overlay */
+@media (max-width: 768px) {
+    
+    .pause-overlay-content {
+        padding: 25px;
+        margin: 15px;
+        max-width: 90%;
+    }
+    
+    .pause-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+    }
+    
+    .pause-overlay-content h2 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .pause-overlay-content p {
+        font-size: 14px;
+    }
+}
+
 /* Mobile responsive overlay */
 @media (max-width: 768px) {
     .overlay-content {
@@ -1034,112 +1616,7 @@ body {
     }
 }
 
-/* Mobile styles */
-@media (max-width: 768px) {
-    body {
-        font-size: 14px;
-    }
-    
-    #game-area {
-        width: 100vw;
-        height: 85vh;
-        border-radius: 0;
-        margin: 0;
-    }
-    
-    #gameCanvas {
-        border-radius: 0;
-        width: 100%;
-        height: auto;
-    }
-    
-    /* Header mobile adjustments */
-    #game-header {
-        padding: 8px 10px;
-        font-size: 0.85em;
-    }
-    
-    .game-title {
-        font-size: 1.1em;
-    }
-    
-    .counter-icon {
-        width: 15px;
-        height: 15px;
-    }
-    
-    .red-hat-counters .counter-group {
-        padding: 2px 6px;
-    }
-    
-    .red-hat-counters .counter-group img {
-        width: 15px;
-        height: 15px;
-    }
-    
-    /* Bottom bar mobile adjustments */
-    #game-bottom-bar {
-        padding: 6px 10px;
-        font-size: 0.85em;
-    }
-    
-    .bottom-icon {
-        width: 15px;
-        height: 15px;
-    }
-    
-    /* Game over overlay mobile adjustments */
-    #gameOverlay .overlay-content {
-        width: 95%;
-        max-width: none;
-        padding: 15px;
-    }
-    
-    .overlay-buttons {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .overlay-buttons button {
-        width: 100%;
-        padding: 12px;
-        font-size: 1em;
-    }
-    
-    /* Order confirmation mobile adjustments */
-    .order-confirmation-box {
-        width: 95%;
-        max-width: none;
-        height: 90%;
-        padding: 10px;
-    }
-    
-    .order-actions {
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 15px;
-        padding-top: 10px;
-    }
-    
-    .order-button {
-        width: 100%;
-        padding: 12px;
-        font-size: 1em;
-    }
-    
-    .order-items-list {
-        max-height: 300px;
-    }
-    
-    .order-item {
-        padding: 8px;
-    }
-    
-    .order-item img {
-        width: 30px;
-        height: 30px;
-    }
-}
+
 
 
 

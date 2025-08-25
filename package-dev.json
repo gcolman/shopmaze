@@ -1,0 +1,15 @@
+{
+  "name": "shopmaze-game",
+  "version": "2.1.0",
+  "description": "Red Hat Quest - Shop Maze Game",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "dev:nocache": "node dev-server.js",
+    "serve": "python3 -m http.server 8000",
+    "websocket": "node websocket-server.js"
+  },
+  "devDependencies": {},
+  "keywords": ["game", "maze", "redhat", "quest"],
+  "author": "Red Hat",
+  "license": "MIT"
+}

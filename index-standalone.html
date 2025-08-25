@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Hat Quest v2.1 - Standalone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #222;
+            color: #fff;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        h1 {
+            color: #FFC107;
+            margin-bottom: 20px;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #555;
+            border-radius: 8px;
+            background-color: #333;
+            margin: 20px 0;
+        }
+        
+        .instructions {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            color: #FFC107;
+            margin-top: 0;
+        }
+        
+        code {
+            background-color: #444;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .warning {
+            background-color: #d32f2f;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Red Hat Quest v2.2 - Standalone Version</h1>
+        
+        <div class="warning">
+            ⚠️ This is a simplified version for file:// protocol testing only.
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="instructions">
+            <h3>🚀 For Full Game Experience:</h3>
+            <p><strong>Option 1 - Python Server (Recommended):</strong></p>
+            <p>1. Open Terminal in your project folder</p>
+            <p>2. Run: <code>python3 -m http.server 3000</code></p>
+            <p>3. Open: <code>http://localhost:3000</code></p>
+            
+            <p><strong>Option 2 - Use Our Server Script:</strong></p>
+            <p>1. Run: <code>./serve.py</code></p>
+            <p>2. Browser will open automatically!</p>
+            
+            <p><strong>Option 3 - Container (Already Running):</strong></p>
+            <p>Open: <code>http://localhost:8080</code></p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📁 Files in This Project:</h3>
+            <ul style="text-align: left;">
+                <li><code>index.html</code> - Full modular version (needs HTTP server)</li>
+                <li><code>index-standalone.html</code> - This simplified version</li>
+                <li><code>serve.py</code> - Simple HTTP server script</li>
+                <li><code>js/</code> - Modular ES6 code architecture</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="script-standalone.js"></script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Hat Quest - Leaderboard</title>
+    
+    <!-- Development: Prevent caching -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        .leaderboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .leaderboard-header {
+            background: linear-gradient(135deg, #374151, #4b5563);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .leaderboard-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .leaderboard-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .trophy-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .auto-refresh-active {
+            animation: pulse 2s infinite;
+        }
+
+        .new-data-highlight {
+            animation: glow 0.5s ease-in-out;
+        }
+
+        @keyframes glow {
+            0% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+            50% { box-shadow: 0 20px 40px rgba(0, 150, 105, 0.6); }
+            100% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard-table th {
+            background: #374151;
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .leaderboard-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+
+        .leaderboard-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .rank {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+            width: 60px;
+        }
+
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+
+        .rank-medal {
+            font-size: 24px;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .player-id {
+            font-weight: 600;
+            color: #374151;
+            font-size: 16px;
+        }
+
+        .player-email {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .score {
+            font-weight: bold;
+            font-size: 18px;
+            color: #059669;
+        }
+
+        .score-breakdown {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .level-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .tshirt-count {
+            background: #f59e0b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .no-data-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+            background: #fef2f2;
+            margin: 20px;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+        }
+
+        .back-to-game {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #059669;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+            transition: all 0.3s;
+        }
+
+        .back-to-game:hover {
+            background: #047857;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .leaderboard-header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .leaderboard-table {
+                font-size: 14px;
+            }
+            
+            .leaderboard-table th,
+            .leaderboard-table td {
+                padding: 10px 8px;
+            }
+            
+            .player-email {
+                display: none;
+            }
+            
+            .back-to-game {
+                bottom: 10px;
+                right: 10px;
+                padding: 10px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-container">
+        <div class="leaderboard-header">
+            <div class="trophy-icon">🏆</div>
+            <h1>Red Hat Quest Leaderboard</h1>
+            <p>Top players ranked by T-shirt value + coins remaining</p>
+        </div>
+
+        <div class="controls">
+            <button class="refresh-btn" onclick="loadLeaderboard()">
+                <span>🔄</span>
+                Refresh
+            </button>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <span>👥</span>
+                    <span id="playerCount">-</span> players
+                </div>
+                <div class="stat-item">
+                    <span>🕒</span>
+                    <span>Last updated: <span id="lastUpdated">-</span></span>
+                </div>
+                <div class="stat-item">
+                    <span id="autoRefreshStatus">🔄</span>
+                    <span>Auto-refresh: ON</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="leaderboardContent">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                Loading leaderboard data...
+            </div>
+        </div>
+    </div>
+
+    <a href="/" class="back-to-game">🎮 Back to Game</a>
+
+    <script>
+        let refreshInterval;
+
+        let lastDataHash = '';
+        let lastUpdateTime = '';
+
+        // Load leaderboard data from API
+        async function loadLeaderboard(silent = false) {
+            try {
+                if (!silent) {
+                    console.log('Fetching leaderboard data...');
+                    showUpdateIndicator();
+                }
+                
+                const response = await fetch('http://localhost:8081/leaderboard');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Check if data has changed
+                const dataHash = JSON.stringify(data.data);
+                const hasChanged = dataHash !== lastDataHash;
+                
+                if (data.success) {
+                    displayLeaderboard(data.data, hasChanged && silent);
+                    updateStats(data.count, data.lastUpdated);
+                    
+                    // Update tracking variables
+                    lastDataHash = dataHash;
+                    lastUpdateTime = data.lastUpdated;
+                    
+                    if (!silent) {
+                        console.log('Leaderboard data received:', data);
+                    } else if (hasChanged) {
+                        console.log('Leaderboard updated with new data');
+                        showNewDataIndicator();
+                    }
+                } else {
+                    throw new Error('API returned error response');
+                }
+                
+                if (!silent) {
+                    hideUpdateIndicator();
+                }
+                
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                if (!silent) {
+                    displayError(`Failed to load leaderboard: ${error.message}`);
+                }
+                hideUpdateIndicator();
+            }
+        }
+
+        // Display leaderboard data in table
+        function displayLeaderboard(leaderboardData, highlightChanges = false) {
+            const contentDiv = document.getElementById('leaderboardContent');
+            
+            if (!leaderboardData || leaderboardData.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="no-data">
+                        <div class="no-data-icon">🎮</div>
+                        <h3>No scores yet!</h3>
+                        <p>Be the first to complete a game and appear on the leaderboard.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let tableHTML = `
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Score</th>
+                            <th>Level</th>
+                            <th>T-Shirts</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            leaderboardData.forEach((entry, index) => {
+                const rank = index + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                const date = new Date(entry.timestamp).toLocaleDateString();
+                const time = new Date(entry.timestamp).toLocaleTimeString();
+
+                tableHTML += `
+                    <tr>
+                        <td class="rank ${rankClass}">
+                            <span class="rank-medal">${medal}</span>
+                            <span>${rank}</span>
+                        </td>
+                        <td>
+                            <div class="player-info">
+                                <div class="player-id">${escapeHtml(entry.userId)}</div>
+                                <div class="player-email">${escapeHtml(entry.email)}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="score">${entry.score}</div>
+                            <div class="score-breakdown">
+                                T-shirts: ${entry.tShirtValue} + Coins: ${entry.coinsRemaining}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="level-badge">Level ${entry.level}</span>
+                        </td>
+                        <td>
+                            <span class="tshirt-count">${entry.tShirtsCount} T-shirts</span>
+                        </td>
+                        <td>
+                            <div class="timestamp">
+                                <div>${date}</div>
+                                <div>${time}</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            contentDiv.innerHTML = tableHTML;
+        }
+
+        // Update stats in header
+        function updateStats(count, lastUpdated) {
+            document.getElementById('playerCount').textContent = count;
+            
+            if (lastUpdated) {
+                const date = new Date(lastUpdated);
+                document.getElementById('lastUpdated').textContent = date.toLocaleTimeString();
+            }
+        }
+
+        // Display error message
+        function displayError(message) {
+            const contentDiv = document.getElementById('leaderboardContent');
+            contentDiv.innerHTML = `
+                <div class="error">
+                    <h3>⚠️ Error Loading Leaderboard</h3>
+                    <p>${escapeHtml(message)}</p>
+                    <button class="refresh-btn" onclick="loadLeaderboard()" style="margin-top: 15px;">
+                        Try Again
+                    </button>
+                </div>
+            `;
+        }
+
+        // Visual feedback functions
+        function showUpdateIndicator() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.style.opacity = '0.6';
+                refreshBtn.innerHTML = '<span>⏳</span> Updating...';
+            }
+        }
+
+        function hideUpdateIndicator() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.style.opacity = '1';
+                refreshBtn.innerHTML = '<span>🔄</span> Refresh';
+            }
+        }
+
+        function showNewDataIndicator() {
+            // Show a brief flash to indicate new data
+            const container = document.querySelector('.leaderboard-container');
+            if (container) {
+                container.style.boxShadow = '0 20px 40px rgba(0, 150, 105, 0.4)';
+                setTimeout(() => {
+                    container.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
+                }, 2000);
+            }
+
+            // Show notification
+            showNotification('🏆 Leaderboard updated with new scores!');
+        }
+
+        function showNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #059669;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+                z-index: 10000;
+                font-weight: 500;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Slide in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 4000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-refresh every 10 seconds for more immediate updates
+        function startAutoRefresh() {
+            refreshInterval = setInterval(() => {
+                loadLeaderboard(true); // Silent refresh
+            }, 10000);
+
+            // Add visual indicator
+            const status = document.getElementById('autoRefreshStatus');
+            if (status) {
+                status.classList.add('auto-refresh-active');
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+
+            // Remove visual indicator
+            const status = document.getElementById('autoRefreshStatus');
+            if (status) {
+                status.classList.remove('auto-refresh-active');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLeaderboard();
+            startAutoRefresh();
+        });
+
+        // Stop auto-refresh when page is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>

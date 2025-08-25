@@ -1,0 +1,41 @@
+# Development files
+dev-server.js
+dev-server.log
+package-dev.json
+
+# Logs
+*.log
+server.log
+websocket.log
+
+# Backup files
+script.js.backup
+
+# Development artifacts
+node_modules/
+.git/
+.gitignore
+
+# Documentation (included in image)
+# README.md
+# DEPLOYMENT.md
+
+# Development and build artifacts
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker files (not needed in container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+build-docker.sh
+
+# Old deployment files
+deployment.yaml
+
+# Standalone files
+index-standalone.html

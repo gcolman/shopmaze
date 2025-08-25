@@ -1,0 +1,22 @@
+{
+  "name": "red-hat-quest-websocket",
+  "version": "2.1.0",
+  "description": "WebSocket control server for Red Hat Quest game",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "game": "python3 -m http.server 8000",
+    "dev": "npm run start & npm run game"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "keywords": [
+    "websocket",
+    "game",
+    "remote-control",
+    "red-hat"
+  ],
+  "author": "Red Hat Quest Team",
+  "license": "MIT"
+}

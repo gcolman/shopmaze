@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Maze - Admin Panel</title>
+    
+    <!-- Development: Prevent caching -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Password Overlay */
+        #passwordOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .password-form {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .password-form h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .password-form input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .password-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .password-form button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .password-form button:hover {
+            background: #5a6fd8;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        /* Admin Panel */
+        #adminPanel {
+            display: none;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .admin-header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .admin-header p {
+            color: #666;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #27ae60;
+        }
+
+        .status-disconnected {
+            background: #e74c3c;
+        }
+
+        .status-connecting {
+            background: #f39c12;
+        }
+
+        #messageLog {
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 5px;
+            height: 400px;
+            overflow-y: auto;
+            border: 2px solid #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-controls {
+            margin-top: 15px;
+        }
+
+        .full-width-card {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .password-form {
+                padding: 30px 20px;
+            }
+        }
+
+        .timestamp {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .message-sent {
+            color: #3498db;
+        }
+
+        .message-received {
+            color: #00ff00;
+        }
+
+        .message-error {
+            color: #e74c3c;
+        }
+
+        .message-system {
+            color: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <!-- Password Protection Overlay -->
+    <div id="passwordOverlay">
+        <div class="password-form">
+            <h2>🔐 Admin Access Required</h2>
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <input type="password" id="passwordInput" placeholder="Enter admin password" />
+            <button onclick="checkPassword()">Access Admin Panel</button>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel">
+        <div class="admin-header">
+            <h1>🎮 Shop Maze - Admin Control Panel</h1>
+            <p>Manage game settings, monitor WebSocket connections, and control game state</p>
+        </div>
+
+        <div class="admin-grid">
+            <!-- WebSocket Configuration -->
+            <div class="admin-card">
+                <h3>🔗 WebSocket Configuration</h3>
+                <div class="form-group">
+                    <label for="wsUrl">WebSocket Server URL:</label>
+                    <input type="text" id="wsUrl" value="" placeholder="Auto-detected WebSocket URL" />
+                </div>
+                <button class="btn btn-primary" onclick="connectWebSocket()">Connect</button>
+                <button class="btn btn-danger" onclick="disconnectWebSocket()">Disconnect</button>
+                <div style="margin-top: 10px;">
+                    <span id="connectionStatus">
+                        <span class="status-indicator status-disconnected"></span>
+                        Disconnected
+                    </span>
+                </div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="admin-card">
+                <h3>🎯 Game Controls</h3>
+                <button class="btn btn-success" onclick="sendGameCommand('start')">▶️ Start Game</button>
+                <button class="btn btn-warning" onclick="sendGameCommand('pause')">⏸️ Pause Game</button>
+                <button class="btn btn-danger" onclick="sendGameCommand('new')">🔄 Restart Game</button>
+                <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                    <strong>Commands:</strong><br>
+                    • Start: Resume/start the game<br>
+                    • Pause: Pause game with admin overlay<br>
+                    • Restart: Start a new game session
+                </div>
+            </div>
+
+            <!-- Message Log -->
+            <div class="admin-card full-width-card">
+                <h3>📡 WebSocket Message Log</h3>
+                <div id="messageLog">WebSocket message log - waiting for connection...\n</div>
+                <div class="message-controls">
+                    <button class="btn btn-primary" onclick="clearLog()">Clear Log</button>
+                    <button class="btn btn-primary" onclick="toggleAutoScroll()">
+                        <span id="autoScrollText">Auto-scroll: ON</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="exportLog()">Export Log</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let autoScroll = true;
+        let messageCount = 0;
+
+        // Password protection
+        function checkPassword() {
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('errorMessage');
+            
+            if (password === 'redhat') {
+                document.getElementById('passwordOverlay').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                logMessage('SYSTEM', 'Admin panel accessed successfully');
+            } else {
+                errorDiv.textContent = 'Incorrect password. Please try again.';
+                errorDiv.style.display = 'block';
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
+            }
+        }
+
+        // Allow Enter key to submit password
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        // WebSocket management
+        function connectWebSocket() {
+            const url = document.getElementById('wsUrl').value.trim();
+            
+            if (!url) {
+                logMessage('ERROR', 'Please enter a WebSocket URL');
+                return;
+            }
+
+            // Ensure URL uses WebSocket protocol
+            let wsUrl = url;
+            if (url.startsWith('http://')) {
+                wsUrl = url.replace('http://', 'ws://');
+                logMessage('SYSTEM', `Converted HTTP to WebSocket URL: ${wsUrl}`);
+            } else if (url.startsWith('https://')) {
+                wsUrl = url.replace('https://', 'wss://');
+                logMessage('SYSTEM', `Converted HTTPS to WebSocket URL: ${wsUrl}`);
+            }
+
+            if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
+                logMessage('ERROR', 'Invalid WebSocket URL. Must start with ws:// or wss://');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                logMessage('SYSTEM', 'Already connected to WebSocket');
+                return;
+            }
+
+            try {
+                updateConnectionStatus('connecting');
+                logMessage('SYSTEM', `Attempting to connect to WebSocket: ${wsUrl}`);
+                
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = function(event) {
+                    updateConnectionStatus('connected');
+                    logMessage('SYSTEM', 'WebSocket connection established');
+                };
+
+                websocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        logMessage('RECEIVED', JSON.stringify(data, null, 2));
+                    } catch (e) {
+                        logMessage('RECEIVED', event.data);
+                    }
+                };
+
+                websocket.onclose = function(event) {
+                    updateConnectionStatus('disconnected');
+                    logMessage('SYSTEM', `WebSocket connection closed (Code: ${event.code})`);
+                };
+
+                websocket.onerror = function(error) {
+                    updateConnectionStatus('disconnected');
+                    logMessage('ERROR', 'WebSocket error: ' + error);
+                };
+
+            } catch (error) {
+                updateConnectionStatus('disconnected');
+                logMessage('ERROR', 'Failed to create WebSocket connection: ' + error.message);
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+                updateConnectionStatus('disconnected');
+                logMessage('SYSTEM', 'WebSocket connection closed by admin');
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            const indicator = statusElement.querySelector('.status-indicator');
+            
+            indicator.className = 'status-indicator status-' + status;
+            
+            switch (status) {
+                case 'connected':
+                    statusElement.innerHTML = '<span class="status-indicator status-connected"></span>Connected';
+                    break;
+                case 'connecting':
+                    statusElement.innerHTML = '<span class="status-indicator status-connecting"></span>Connecting...';
+                    break;
+                default:
+                    statusElement.innerHTML = '<span class="status-indicator status-disconnected"></span>Disconnected';
+            }
+        }
+
+        // Game controls
+        function sendGameCommand(command) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                logMessage('ERROR', 'WebSocket not connected. Please connect first.');
+                return;
+            }
+
+            const message = {
+                type: 'command',
+                command: command,
+                timestamp: new Date().toISOString(),
+                source: 'admin-panel'
+            };
+
+            try {
+                websocket.send(JSON.stringify(message));
+                logMessage('SENT', JSON.stringify(message, null, 2));
+            } catch (error) {
+                logMessage('ERROR', 'Failed to send command: ' + error.message);
+            }
+        }
+
+        // Message logging
+        function logMessage(type, message) {
+            const log = document.getElementById('messageLog');
+            const timestamp = new Date().toLocaleTimeString();
+            messageCount++;
+            
+            const cssClass = type.toLowerCase().replace('received', 'received').replace('sent', 'sent').replace('error', 'error').replace('system', 'system');
+            
+            const logEntry = `[${timestamp}] ${type}: ${message}\n`;
+            log.textContent += logEntry;
+            
+            if (autoScroll) {
+                log.scrollTop = log.scrollHeight;
+            }
+
+            // Limit log size to prevent memory issues
+            if (messageCount > 1000) {
+                const lines = log.textContent.split('\n');
+                log.textContent = lines.slice(-500).join('\n');
+                messageCount = 500;
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('messageLog').textContent = 'Log cleared by admin\n';
+            messageCount = 1;
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            document.getElementById('autoScrollText').textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+
+        function exportLog() {
+            const logContent = document.getElementById('messageLog').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `shopmaze-admin-log-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            logMessage('SYSTEM', 'Log exported successfully');
+        }
+
+        // Get the WebSocket URL from configuration
+        function getWebSocketUrl() {
+            // Check for externally configured WebSocket URL
+            if (window.WEBSOCKET_URL) {
+                return window.WEBSOCKET_URL;
+            }
+            
+            // Fallback to environment-based detection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const hostname = window.location.hostname;
+            
+            if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+                // Local development
+                const fallbackUrl = `${protocol}//${hostname}:8080`;
+                return fallbackUrl;
+            } else {
+                // Production fallback - use same host with secure protocol
+                const fallbackUrl = `${protocol}//${hostname.replace('game', 'websocket')}`;
+                return fallbackUrl;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('passwordInput').focus();
+            
+            // Auto-detect and set WebSocket URL
+            const wsUrl = getWebSocketUrl();
+            document.getElementById('wsUrl').value = wsUrl;
+            
+            logMessage('SYSTEM', 'Admin panel initialized');
+            logMessage('SYSTEM', `Auto-detected WebSocket URL: ${wsUrl}`);
+        });
+
+        // Auto-connect on page load if URL is pre-filled and valid
+        setTimeout(function() {
+            const url = document.getElementById('wsUrl').value;
+            if (url && (url.startsWith('ws://') || url.startsWith('wss://'))) {
+                // Auto-connect to WebSocket
+                connectWebSocket();
+            }
+        }, 2000);
+    </script>
+    
+    <!-- Configuration loading -->
+    <script type="module" src="js/config.js"></script>
+    <script src="js/config-loader.js"></script>
+</body>
+</html>

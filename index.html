@@ -2,12 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Red Hat Quest v2.1</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="assets/red_hat_icon.png">
+    
+    <!-- Development: Prevent caching -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" href="style.css?v=dev">
+    
+    <!-- Development: Cache-busting script to add timestamps to imports -->
+    <script>
+        // Add timestamp to dynamic imports for cache busting
+        window.cacheBuster = Date.now();
+    </script>
 </head>
 <body>
-    <div id="game-container">
+    <!-- Registration Overlay -->
+    <div id="registrationOverlay" class="registration-overlay">
+        <div class="registration-box">
+            <div class="registration-header">
+                <h1>🎮 Welcome to Red Hat Quest v2.2</h1>
+                <p>Enter your email address to create your player profile and start your adventure!</p>
+            </div>
+            
+            <form class="registration-form">
+                <div class="form-group">
+                    <label for="emailInput">Email Address</label>
+                    <input type="email" id="emailInput" placeholder="Enter your email address" required>
+                    <div id="emailError" class="error-message"></div>
+                </div>
+                
+                <button type="button" id="registerButton" class="register-button">
+                    Register & Start Playing
+                </button>
+                
+                <div id="registrationLoading" class="loading-message" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p>Creating your username...</p>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="game-container" style="display: none;">
         <div id="game-header">
             <div class="header-content">
                 <div class="counter-group">
@@ -23,23 +62,39 @@
         </div>
         
         <div id="game-area">
-            <canvas id="gameCanvas"></canvas>
+            <div id="canvas-container">
+                <canvas id="gameCanvas"></canvas>
+                
+                <!-- Pause Overlay - positioned directly over canvas -->
+                <div id="pauseOverlay" style="display:none;">
+                    <div class="pause-overlay-content">
+                        <div class="pause-icon">⏸️</div>
+                        <h2>Game is paused by Administrators</h2>
+                        <p>Please wait while the game is paused...</p>
+                    </div>
+                </div>
+                
+                <!-- Game Over Overlay -->
+                <div id="gameOverlay" style="display:none;">
+                    <div class="overlay-content">
+                        <h2 id="overlayTitle">Game Over!</h2>
+                        <div class="overlay-buttons">
+                            <button id="checkoutButton">Checkout</button>
+                            <button id="restartButton">Restart Game</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div id="game-bottom-bar">
                 <div class="bottom-counter">
                     <img src="assets/t_shirt_rhel.png" alt="T-Shirts" class="bottom-icon">
                     <span>T-Shirts: </span>
                     <span id="tshirtTotal">0</span>
                 </div>
-            </div>
-            
-            <!-- Game Over Overlay -->
-            <div id="gameOverlay" style="display:none;">
-                <div class="overlay-content">
-                    <h2 id="overlayTitle">Game Over!</h2>
-                    <div class="overlay-buttons">
-                        <button id="checkoutButton">Checkout</button>
-                        <button id="restartButton">Restart Game</button>
-                    </div>
+                <div class="bottom-user-info">
+                    <span class="user-id-label">User ID: </span>
+                    <span id="userIdDisplay">Not registered</span>
                 </div>
             </div>
         </div>
@@ -84,13 +139,10 @@
                         <p><strong>Invoice #:</strong> <span id="invoiceNumber"></span></p>
                         <p><strong>Date:</strong> <span id="invoiceDate"></span></p>
                     </div>
-                    <button id="closeInvoiceButton">Close Invoice</button>
                 </div>
                 
                 <div class="invoice-section customer-info">
-                    <h3>Bill To:</h3>
-                    <p>Player Character</p>
-                    <p>Shop Floor Location</p>
+                    <h3>Bill To: <span id="invoicePlayerName">Player Character</span></h3>
                 </div>
 
                 <div class="invoice-section item-table">
@@ -103,35 +155,36 @@
                                 <th>Line Total</th>
                             </tr>
                         </thead>
-                        <tbody id="invoiceItems">
-                            </tbody>
+                                                <tbody id="invoiceItems">
+                        </tbody>
+                        <tfoot>
+                            <tr class="subtotal-row">
+                                <td colspan="3" style="text-align: right;"><strong>Subtotal:</strong></td>
+                                <td style="text-align: right;"><strong id="invoiceSubtotal">£0</strong></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
 
                 <div class="invoice-section invoice-summary">
-                    <div class="summary-row">
-                        <span>Subtotal:</span>
-                        <span id="invoiceSubtotal">£0</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>Discount:</span>
-                        <span>£0</span> </div>
                     <div class="summary-row total-row">
                         <span>TOTAL:</span>
                         <span id="invoiceTotal">£0</span>
                     </div>
                 </div>
 
-                <div class="invoice-footer">
-                    <p>Thank you for your purchase!</p>
-                    <p>Red Hat Quest v2.1 - Powered by Innovation</p>
-                </div>
+                <button id="closeInvoiceButton">Close Invoice</button>
             </div>
         </div>
         
 
     </div>
 
-    <script src="script.js"></script>
+    <!-- Configuration loading -->
+    <script type="module" src="js/config.js"></script>
+    <script src="js/config-loader.js"></script>
+    
+    <!-- Main application -->
+    <script type="module" src="js/main.js?v=dev"></script>
 </body>
 </html>

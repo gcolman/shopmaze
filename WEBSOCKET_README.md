@@ -45,6 +45,14 @@ The WebSocket server accepts the following commands:
 - **Always**: Restarts the game from the beginning
 - **Aliases**: `newgame`, `new_game`
 
+### `endgame`
+- **Function**: Ends the current game immediately
+- **When running**: Ends the game and triggers the same processes as a normal game over
+- **When already paused or game over**: No effect (returns info message)
+- **Aliases**: `end_game`, `end`
+- **Process**: Calls the same `_endGame()` function used for normal game completion
+- **Result**: Shows game over overlay, sends game data to WebSocket, and allows restart
+
 ## Command Formats
 
 Commands can be sent in multiple formats:
@@ -54,6 +62,7 @@ Commands can be sent in multiple formats:
 start
 pause
 new
+endgame
 ```
 
 ### JSON Format
@@ -61,6 +70,7 @@ new
 {"command": "start"}
 {"command": "pause"}
 {"command": "new"}
+{"command": "endgame"}
 ```
 
 ### Alternative JSON
@@ -76,6 +86,7 @@ When running the WebSocket server, you can type commands directly:
 start
 pause
 new
+endgame
 status
 quit
 ```

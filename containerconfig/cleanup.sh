@@ -15,6 +15,7 @@ APP_LABEL="app=redhat-quest-game"
 
 echo "🗑️  Deleting HorizontalPodAutoscaler..."
 oc delete hpa redhat-quest-hpa --ignore-not-found=true
+oc delete hpa redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting NetworkPolicy..."
 oc delete networkpolicy redhat-quest-network-policy --ignore-not-found=true
@@ -23,18 +24,30 @@ echo "🗑️  Deleting Routes..."
 oc delete route redhat-quest-game-route --ignore-not-found=true
 oc delete route redhat-quest-admin-route --ignore-not-found=true
 oc delete route redhat-quest-leaderboard-route --ignore-not-found=true
+oc delete route redhat-quest-server --ignore-not-found=true
+oc delete route redhat-quest-websocket-route --ignore-not-found=true
+oc delete route redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting Services..."
 oc delete service redhat-quest-game-service --ignore-not-found=true
+oc delete service redhat-quest-server --ignore-not-found=true
+oc delete service redhat-quest-websocket-service --ignore-not-found=true
+oc delete service redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting Deployment..."
 oc delete deployment redhat-quest-game --ignore-not-found=true
+oc delete deployment redhat-quest-server --ignore-not-found=true
+oc delete deployment redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting ConfigMap..."
 oc delete configmap redhat-quest-config --ignore-not-found=true
+oc delete configmap redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting ServiceAccount..."
 oc delete serviceaccount redhat-quest-sa --ignore-not-found=true
+
+echo "🗑️   Deleting imgstream..."
+oc delete imagestreams redhat-quest --ignore-not-found=true
 
 echo "---"
 echo "🔍 Verifying cleanup - checking for remaining resources with label: $APP_LABEL"

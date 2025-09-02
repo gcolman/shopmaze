@@ -10,7 +10,13 @@ export class UIManager {
             playerId: '',
             isRegistered: false
         };
+        this.websocketController = null;
         this._setupEventListeners();
+    }
+
+    // Set the WebSocket controller reference
+    setWebSocketController(websocketController) {
+        this.websocketController = websocketController;
     }
 
     _getUIElements() {
@@ -428,6 +434,11 @@ export class UIManager {
                 this.hideRegistration();
                 this.showGame();
                 
+                // Send registration event to WebSocket if available
+                if (this.websocketController) {
+                    this.websocketController.sendRegistrationEvent(this.playerData);
+                }
+                
                 return this.playerData;
             } else {
                 this.showEmailError('Registration failed. Please try again.');
@@ -474,7 +485,17 @@ export class UIManager {
             'Peppy', 'Zippy', 'Snappy', 'Happy', 'Jolly', 'Merry', 'Cheerful', 'Bouncing',
             'Dancing', 'Prancing', 'Skipping', 'Hopping', 'Flying', 'Floating', 'Glowing',
             'Shining', 'Twinkling', 'Magical', 'Mystical', 'Whimsical', 'Playful', 'Mischievous',
-            'Curious', 'Adventurous', 'Bold', 'Brave', 'Clever', 'Smart', 'Witty', 'Crafty'
+            'Curious', 'Adventurous', 'Bold', 'Brave', 'Clever', 'Smart', 'Witty', 'Crafty',
+            'able', 'acidic', 'adorable', 'adventurous', 'affectionate', 'aged', 'agile', 'agreeable', 'ambitious', 'ancient',
+            'angry', 'anxious', 'aquatic', 'arrogant', 'attractive', 'beautiful', 'bewildered', 'big', 'bitter', 'bizarre',
+            'black', 'blue', 'brave', 'bright', 'brilliant', 'broad', 'busy', 'calm', 'cautious', 'charming',
+            'cheerful', 'clean', 'clever', 'cloudy', 'cold', 'colorful', 'comfortable', 'courageous', 'crazy', 'creamy',
+            'creepy', 'crisp', 'cruel', 'curious', 'curly', 'dangerous', 'dark', 'delicious', 'delightful', 'difficult',
+            'diligent', 'dirty', 'dry', 'eager', 'easy', 'elegant', 'empty', 'enormous', 'enthusiastic', 'excellent',
+            'excited', 'exotic', 'expensive', 'faint', 'fair', 'faithful', 'fancy', 'fantastic', 'fast', 'fearless',
+            'filthy', 'firm', 'fluffy', 'foolish', 'fragile', 'free', 'friendly', 'frightened', 'funny', 'generous',
+            'gentle', 'giant', 'gorgeous', 'graceful', 'grand', 'grateful', 'green', 'grumpy', 'happy', 'hard',
+            'harsh', 'healthy', 'heavy', 'helpful', 'hilarious', 'hot', 'huge', 'humble', 'hungry', 'icy'
         ];
 
         const nouns = [
@@ -485,7 +506,16 @@ export class UIManager {
             'Wizard', 'Knight', 'Pirate', 'Robot', 'Ninja', 'Astronaut', 'Explorer', 'Inventor',
             'Artist', 'Musician', 'Dancer', 'Chef', 'Gardener', 'Builder', 'Dreamer', 'Wanderer',
             'Cookie', 'Cupcake', 'Donut', 'Waffle', 'Pancake', 'Muffin', 'Sandwich', 'Pizza',
-            'Rocket', 'Balloon', 'Kite', 'Castle', 'Bridge', 'Mountain', 'Cloud', 'Star'
+            'Rocket', 'Balloon', 'Kite', 'Castle', 'Bridge', 'Mountain', 'Cloud', 'Star',  'aardvark', 'albatross', 'alligator', 'alpaca', 'antelope', 'armadillo', 'badger', 'bat', 'bear', 'beaver',
+            'bee', 'bird', 'bison', 'boa', 'buffalo', 'butterfly', 'camel', 'cat', 'caterpillar', 'chameleon',
+            'cheetah', 'chicken', 'chimpanzee', 'chinchilla', 'cobra', 'cod', 'cow', 'coyote', 'crab', 'crane',
+            'cricket', 'crocodile', 'crow', 'deer', 'dinosaur', 'dog', 'dolphin', 'donkey', 'dragonfly', 'duck',
+            'eagle', 'eel', 'elephant', 'elk', 'falcon', 'ferret', 'fish', 'flamingo', 'fox', 'frog',
+            'gazelle', 'gecko', 'gerbil', 'giraffe', 'goat', 'goose', 'gorilla', 'grasshopper', 'hamster', 'hawk',
+            'hedgehog', 'hippopotamus', 'horse', 'hummingbird', 'iguana', 'jaguar', 'jellyfish', 'kangaroo', 'koala', 'komodo',
+            'lion', 'lizard', 'llama', 'lobster', 'lynx', 'macaw', 'moose', 'mouse', 'narwhal', 'octopus',
+            'ostrich', 'otter', 'owl', 'ox', 'panda', 'panther', 'parrot', 'peacock', 'pelican', 'penguin',
+            'pig', 'pigeon', 'polarbear', 'pony', 'puffin', 'quail', 'rabbit', 'raccoon'
         ];
 
         const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
@@ -538,49 +568,5 @@ export class UIManager {
 
     getPlayerData() {
         return this.playerData;
-    }
-
-    // Mock order submission web service
-    async mockOrderSubmissionWebService(orderData) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const subtotal = orderData.items.reduce((total, item) => total + (item.cost * item.quantity), 0);
-        const taxRate = 0.20;
-        const taxAmount = subtotal * taxRate;
-        const total = subtotal + taxAmount;
-        
-        return {
-            success: true,
-            invoice: {
-                invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
-                invoiceDate: new Date().toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: 'numeric' 
-                }),
-                customer: {
-                    name: orderData.customerInfo.username,
-                    email: orderData.customerInfo.email,
-                    playerId: orderData.customerInfo.playerId
-                },
-                items: orderData.items.map(item => ({
-                    description: `${item.id} T-Shirt`,
-                    image: item.src,
-                    quantity: item.quantity,
-                    unitPrice: item.cost,
-                    lineTotal: item.cost * item.quantity
-                })),
-                totals: {
-                    subtotal: subtotal,
-                    tax: taxAmount,
-                    taxRate: taxRate,
-                    total: total,
-                    currency: 'GBP'
-                },
-                paymentStatus: 'PAID',
-                orderStatus: 'CONFIRMED',
-                processedAt: new Date().toISOString()
-            }
-        };
     }
 }

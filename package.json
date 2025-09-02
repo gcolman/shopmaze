@@ -4,9 +4,7 @@
   "description": "WebSocket control server for Red Hat Quest game",
   "main": "websocket-server.js",
   "scripts": {
-    "start": "node websocket-server.js",
-    "game": "python3 -m http.server 8000",
-    "dev": "npm run start & npm run game"
+    "start": "python3 -m http.server 8000"
   },
   "dependencies": {
     "ws": "^8.18.3"

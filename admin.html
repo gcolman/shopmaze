@@ -310,11 +310,15 @@
                 </div>
                 <button class="btn btn-primary" onclick="connectWebSocket()">Connect</button>
                 <button class="btn btn-danger" onclick="disconnectWebSocket()">Disconnect</button>
+                <button class="btn btn-warning" onclick="resetReconnection()">Reset Auto-Reconnect</button>
                 <div style="margin-top: 10px;">
                     <span id="connectionStatus">
                         <span class="status-indicator status-disconnected"></span>
                         Disconnected
                     </span>
+                </div>
+                <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                    <span id="reconnectInfo">Auto-reconnect ready</span>
                 </div>
             </div>
 
@@ -324,11 +328,33 @@
                 <button class="btn btn-success" onclick="sendGameCommand('start')">▶️ Start Game</button>
                 <button class="btn btn-warning" onclick="sendGameCommand('pause')">⏸️ Pause Game</button>
                 <button class="btn btn-danger" onclick="sendGameCommand('new')">🔄 Restart Game</button>
+                <button class="btn btn-danger" onclick="sendGameCommand('endgame')" style="margin-left: 10px;">🏁 End Game</button>
                 <div style="margin-top: 15px; font-size: 12px; color: #666;">
                     <strong>Commands:</strong><br>
                     • Start: Resume/start the game<br>
                     • Pause: Pause game with admin overlay<br>
-                    • Restart: Start a new game session
+                    • Restart: Start a new game session<br>
+                    • End Game: Immediately end current game (same as game over)
+                </div>
+            </div>
+
+            <!-- Send To Test -->
+            <div class="admin-card">
+                <h3>📨 Send Message to User</h3>
+                <div class="form-group">
+                    <label for="targetUserId">Target User ID:</label>
+                    <input type="text" id="targetUserId" placeholder="e.g., BouncyPenguin123" />
+                </div>
+                <div class="form-group">
+                    <label for="messageContent">Message:</label>
+                    <input type="text" id="messageContent" placeholder="Enter message to send" />
+                </div>
+                <button class="btn btn-primary" onclick="sendToUser()">📤 Send Message</button>
+                <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                    <strong>Test:</strong><br>
+                    • Tests the sendTo WebSocket method<br>
+                    • Sends JSON: {"type": "send-to", "targetUserId": "...", "message": "..."}<br>
+                    • Requires active WebSocket connection
                 </div>
             </div>
 
@@ -351,6 +377,12 @@
         let websocket = null;
         let autoScroll = true;
         let messageCount = 0;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 10;
+        let reconnectDelay = 1000; // Start with 1 second
+        let heartbeatInterval = null;
+        let connectionTimeout = null;
+        let isManualDisconnect = false;
 
         // Password protection
         function checkPassword() {
@@ -376,77 +408,20 @@
             }
         });
 
-        // WebSocket management
-        function connectWebSocket() {
-            const url = document.getElementById('wsUrl').value.trim();
-            
-            if (!url) {
-                logMessage('ERROR', 'Please enter a WebSocket URL');
-                return;
-            }
-
-            // Ensure URL uses WebSocket protocol
-            let wsUrl = url;
-            if (url.startsWith('http://')) {
-                wsUrl = url.replace('http://', 'ws://');
-                logMessage('SYSTEM', `Converted HTTP to WebSocket URL: ${wsUrl}`);
-            } else if (url.startsWith('https://')) {
-                wsUrl = url.replace('https://', 'wss://');
-                logMessage('SYSTEM', `Converted HTTPS to WebSocket URL: ${wsUrl}`);
-            }
-
-            if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
-                logMessage('ERROR', 'Invalid WebSocket URL. Must start with ws:// or wss://');
-                return;
-            }
-
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                logMessage('SYSTEM', 'Already connected to WebSocket');
-                return;
-            }
-
-            try {
-                updateConnectionStatus('connecting');
-                logMessage('SYSTEM', `Attempting to connect to WebSocket: ${wsUrl}`);
-                
-                websocket = new WebSocket(wsUrl);
-
-                websocket.onopen = function(event) {
-                    updateConnectionStatus('connected');
-                    logMessage('SYSTEM', 'WebSocket connection established');
-                };
-
-                websocket.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        logMessage('RECEIVED', JSON.stringify(data, null, 2));
-                    } catch (e) {
-                        logMessage('RECEIVED', event.data);
-                    }
-                };
-
-                websocket.onclose = function(event) {
-                    updateConnectionStatus('disconnected');
-                    logMessage('SYSTEM', `WebSocket connection closed (Code: ${event.code})`);
-                };
-
-                websocket.onerror = function(error) {
-                    updateConnectionStatus('disconnected');
-                    logMessage('ERROR', 'WebSocket error: ' + error);
-                };
-
-            } catch (error) {
-                updateConnectionStatus('disconnected');
-                logMessage('ERROR', 'Failed to create WebSocket connection: ' + error.message);
-            }
-        }
+        // WebSocket management - Enhanced with reconnection and heartbeat
 
         function disconnectWebSocket() {
             if (websocket) {
+                isManualDisconnect = true; // Prevent automatic reconnection
+                stopHeartbeat();
                 websocket.close();
                 websocket = null;
                 updateConnectionStatus('disconnected');
                 logMessage('SYSTEM', 'WebSocket connection closed by admin');
+                
+                // Reset reconnection state
+                reconnectAttempts = 0;
+                reconnectDelay = 1000;
             }
         }
 
@@ -487,6 +462,44 @@
                 logMessage('SENT', JSON.stringify(message, null, 2));
             } catch (error) {
                 logMessage('ERROR', 'Failed to send command: ' + error.message);
+            }
+        }
+
+        // Send message to specific user
+        function sendToUser() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                logMessage('ERROR', 'WebSocket not connected. Please connect first.');
+                return;
+            }
+
+            const userId = document.getElementById('targetUserId').value.trim();
+            const message = document.getElementById('messageContent').value.trim();
+
+            if (!userId) {
+                logMessage('ERROR', 'Please enter a target User ID');
+                return;
+            }
+
+            if (!message) {
+                logMessage('ERROR', 'Please enter a message to send');
+                return;
+            }
+
+            try {
+                // Create JSON object for send-to message
+                const sendToMessage = {
+                    type: "send-to",
+                    targetUserId: userId,
+                    message: message
+                };
+                
+                websocket.send(JSON.stringify(sendToMessage));
+                logMessage('SENT', JSON.stringify(sendToMessage, null, 2));
+                
+                // Clear the message field for next use
+                document.getElementById('messageContent').value = '';
+            } catch (error) {
+                logMessage('ERROR', 'Failed to send message: ' + error.message);
             }
         }
 
@@ -567,9 +580,217 @@
             const wsUrl = getWebSocketUrl();
             document.getElementById('wsUrl').value = wsUrl;
             
+            // Add Enter key support for sendTo inputs
+            document.getElementById('targetUserId').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('messageContent').focus();
+                }
+            });
+            
+            document.getElementById('messageContent').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendToUser();
+                }
+            });
+            
             logMessage('SYSTEM', 'Admin panel initialized');
             logMessage('SYSTEM', `Auto-detected WebSocket URL: ${wsUrl}`);
         });
+
+        // Heartbeat mechanism to keep connection alive
+        function startHeartbeat() {
+            stopHeartbeat(); // Clear any existing heartbeat
+            heartbeatInterval = setInterval(() => {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    try {
+                        websocket.send(JSON.stringify({ 
+                            type: 'ping', 
+                            timestamp: new Date().toISOString() 
+                        }));
+                        logMessage('SYSTEM', 'Heartbeat ping sent');
+                    } catch (error) {
+                        logMessage('ERROR', 'Failed to send heartbeat: ' + error.message);
+                    }
+                }
+            }, 30000); // Send ping every 30 seconds
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        // Automatic reconnection with exponential backoff
+        function handleReconnection() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                logMessage('ERROR', `Max reconnection attempts (${maxReconnectAttempts}) reached. Auto-reconnection disabled.`);
+                logMessage('SYSTEM', 'Click "Connect" or "Reset Auto-Reconnect" button to retry.');
+                updateReconnectInfo(`Max attempts reached (${maxReconnectAttempts}/${maxReconnectAttempts})`);
+                return;
+            }
+
+            reconnectAttempts++;
+            const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttempts - 1), 30000); // Max 30 seconds
+            
+            logMessage('SYSTEM', `Attempting reconnection ${reconnectAttempts}/${maxReconnectAttempts} in ${delay/1000}s...`);
+            updateReconnectInfo(`Reconnecting ${reconnectAttempts}/${maxReconnectAttempts} in ${delay/1000}s`);
+            
+            connectionTimeout = setTimeout(() => {
+                if (!isManualDisconnect) {
+                    logMessage('SYSTEM', `Reconnection attempt ${reconnectAttempts}...`);
+                    updateReconnectInfo(`Attempting ${reconnectAttempts}/${maxReconnectAttempts}...`);
+                    connectWebSocket();
+                }
+            }, delay);
+        }
+
+        // Reset reconnection state
+        function resetReconnection() {
+            reconnectAttempts = 0;
+            reconnectDelay = 1000;
+            isManualDisconnect = false;
+            
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+                connectionTimeout = null;
+            }
+            
+            updateReconnectInfo('Auto-reconnect reset - ready');
+            logMessage('SYSTEM', 'Reconnection state reset. Auto-reconnection re-enabled.');
+        }
+
+        // Update reconnection info display
+        function updateReconnectInfo(message) {
+            const reconnectElement = document.getElementById('reconnectInfo');
+            if (reconnectElement) {
+                reconnectElement.textContent = message;
+            }
+        }
+
+        // Get human-readable close code descriptions
+        function getCloseReason(code) {
+            const closeCodes = {
+                1000: 'Normal closure',
+                1001: 'Going away (server shutdown or navigate away)',
+                1002: 'Protocol error',
+                1003: 'Unsupported data type',
+                1005: 'No status received',
+                1006: 'Abnormal closure (connection lost)',
+                1007: 'Invalid data (non-UTF8)',
+                1008: 'Policy violation',
+                1009: 'Message too big',
+                1010: 'Extension negotiation failed',
+                1011: 'Server error',
+                1012: 'Service restart',
+                1013: 'Service overload',
+                1014: 'Bad gateway',
+                1015: 'TLS handshake failed'
+            };
+            return closeCodes[code] || `Unknown code (${code})`;
+        }
+
+        // Enhanced connect button to reset manual disconnect flag
+        function connectWebSocket() {
+            isManualDisconnect = false; // Allow automatic reconnection
+            
+            const url = document.getElementById('wsUrl').value.trim();
+            
+            if (!url) {
+                logMessage('ERROR', 'Please enter a WebSocket URL');
+                return;
+            }
+
+            // Clear any pending reconnection
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+                connectionTimeout = null;
+            }
+
+            // Rest of the existing connectWebSocket logic...
+            let wsUrl = url;
+            if (url.startsWith('http://')) {
+                wsUrl = url.replace('http://', 'ws://');
+                logMessage('SYSTEM', `Converted HTTP to WebSocket URL: ${wsUrl}`);
+            } else if (url.startsWith('https://')) {
+                wsUrl = url.replace('https://', 'wss://');
+                logMessage('SYSTEM', `Converted HTTPS to WebSocket URL: ${wsUrl}`);
+            }
+
+            if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
+                logMessage('ERROR', 'Invalid WebSocket URL. Must start with ws:// or wss://');
+                return;
+            }
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                logMessage('SYSTEM', 'Already connected to WebSocket');
+                return;
+            }
+
+            try {
+                updateConnectionStatus('connecting');
+                logMessage('SYSTEM', `Attempting to connect to WebSocket: ${wsUrl}`);
+                
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = function(event) {
+                    updateConnectionStatus('connected');
+                    reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+                    reconnectDelay = 1000; // Reset delay
+                    isManualDisconnect = false;
+                    updateReconnectInfo('Connected - auto-reconnect ready');
+                    logMessage('SYSTEM', 'WebSocket connection established');
+                    
+                    // Start heartbeat to keep connection alive
+                    startHeartbeat();
+                    
+                    // Clear any existing connection timeout
+                    if (connectionTimeout) {
+                        clearTimeout(connectionTimeout);
+                        connectionTimeout = null;
+                    }
+                };
+
+                websocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        // Don't log ping/pong messages to reduce noise
+                        if (data.type !== 'pong') {
+                            logMessage('RECEIVED', JSON.stringify(data, null, 2));
+                        }
+                    } catch (e) {
+                        logMessage('RECEIVED', event.data);
+                    }
+                };
+
+                websocket.onclose = function(event) {
+                    updateConnectionStatus('disconnected');
+                    stopHeartbeat();
+                    
+                    // Enhanced close code logging
+                    let closeReason = getCloseReason(event.code);
+                    logMessage('SYSTEM', `WebSocket connection closed (Code: ${event.code}) - ${closeReason}`);
+                    
+                    // Attempt reconnection if not manually disconnected
+                    if (!isManualDisconnect) {
+                        handleReconnection();
+                    }
+                };
+
+                websocket.onerror = function(error) {
+                    updateConnectionStatus('disconnected');
+                    logMessage('ERROR', 'WebSocket error: ' + error);
+                };
+
+            } catch (error) {
+                updateConnectionStatus('disconnected');
+                logMessage('ERROR', 'Failed to create WebSocket connection: ' + error.message);
+                if (!isManualDisconnect) {
+                    handleReconnection();
+                }
+            }
+        }
 
         // Auto-connect on page load if URL is pre-filled and valid
         setTimeout(function() {

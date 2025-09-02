@@ -14,7 +14,10 @@ data:
     
     window.DEPLOYMENT_CONFIG = {
       // WebSocket URL for container deployments
-      websocketUrl: 'wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control',
+      websocketUrl: 'wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/game-control',
+      
+      // Leaderboard API URL for fetching game statistics
+      leaderboardUrl: 'http://localhost:8081/leaderboard',
       
       // Environment settings
       environment: 'production',
@@ -35,8 +38,10 @@ data:
     // Set the WebSocket URL for immediate use
     window.WEBSOCKET_URL = window.DEPLOYMENT_CONFIG.websocketUrl;
     
+    // Set the Leaderboard URL for immediate use
+    window.LEADERBOARD_URL = window.DEPLOYMENT_CONFIG.leaderboardUrl;
+    
     console.log('ShopMaze: Loaded deployment configuration', window.DEPLOYMENT_CONFIG);
-
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -47,9 +52,8 @@ metadata:
     component: frontend
 data:
   # Simple WebSocket URL configuration
-  websocket-url: "wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control"
-  
-  # Alternative configurations for different environments
-  websocket-url-dev: "ws://localhost:8080/game-control"
-  websocket-url-staging: "wss://redhat-quest-websocket-route-staging.apps.cluster.example.com/game-control"
-  websocket-url-prod: "wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control"
+  WEBSOCKET_URL: "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control"
+  websocketUrl: "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control"
+  LEADERBOARD_URL: "https://shopmaze-http-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com"
+  leaderboardUrl: "https://shopmaze-http-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com"
+

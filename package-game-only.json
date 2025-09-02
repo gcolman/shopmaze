@@ -1,0 +1,20 @@
+{
+  "name": "red-hat-quest-game-only",
+  "version": "2.1.0",
+  "description": "Red Hat Quest game - static files only deployment",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "build": "echo 'No build step required for static deployment'",
+    "serve": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "game",
+    "static",
+    "red-hat",
+    "maze"
+  ],
+  "author": "Red Hat Quest Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

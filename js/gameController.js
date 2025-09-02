@@ -10,6 +10,8 @@ import { GameObjectManager } from './gameObjects.js';
 import { Renderer } from './renderer.js';
 import { UIManager } from './uiManager.js';
 import { WebSocketController } from './websocketController.js';
+import { Score } from './score.js';
+import { Invoice } from './invoice.js';
 
 export class GameController {
     constructor() {
@@ -24,6 +26,8 @@ export class GameController {
         this.gameObjectManager = new GameObjectManager(this.assetLoader);
         this.renderer = new Renderer(this.canvas, this.assetLoader);
         this.uiManager = new UIManager();
+        this.score = new Score();
+        this.invoice = new Invoice();
         
         // Game state
         this.currentLevelIndex = 0;
@@ -137,6 +141,17 @@ export class GameController {
         // Show registration overlay first
         this.uiManager.showRegistration();
         
+        // Initialize WebSocket controller early so it's available for registration
+        try {
+            this.websocketController = new WebSocketController(this);
+            
+            // Pass WebSocket controller reference to UI manager for registration events
+            this.uiManager.setWebSocketController(this.websocketController);
+        } catch (error) {
+            console.error('Failed to initialize WebSocket controller:', error);
+            // Continue without WebSocket if it fails
+        }
+        
         // Initialize assets
         this.assetLoader.initializeAssets();
         
@@ -170,9 +185,8 @@ export class GameController {
         this._initializeGameElements();
         this._startGame();
         
-        // Initialize WebSocket controller after game is ready
-        try {
-            this.websocketController = new WebSocketController(this);
+        // Set game start time for WebSocket tracking if available
+        if (this.websocketController) {
             this.websocketController.setGameStartTime(); // Track when game starts
             
             // Test WebSocket data after 5 seconds (for debugging)
@@ -187,8 +201,6 @@ export class GameController {
                     this.websocketController.sendGameEventData('test_connection', testPlayerData, testGameState);
                 }
             }, 5000);
-        } catch (error) {
-            console.warn("WebSocket controller failed to initialize:", error);
         }
     }
 
@@ -217,6 +229,9 @@ export class GameController {
         this.ghostManager.configureLevelSettings(ghostSettings);
         this.ghostManager.initialize();
         const activeGhosts = this.ghostManager.getActiveGhosts();
+        
+        // Initialize score display
+        this.score.initialize();
         
         // Update UI
         const state = this.gameObjectManager.getCurrentState();
@@ -310,11 +325,21 @@ export class GameController {
             playerPos.gridY
         );
         
+        // Update score for collected coins
+        if (coinsCollected > 0) {
+            this.score.addCoins(coinsCollected);
+        }
+        
         // Check t-shirt collection
         const tShirtResult = this.gameObjectManager.checkTShirtCollection(
             playerPos.gridX, 
             playerPos.gridY
         );
+        
+        // Update score for collected t-shirt
+        if (tShirtResult && tShirtResult.success) {
+            this.score.addTShirtValue(tShirtResult.cost);
+        }
 
 
         // Check red hat collection
@@ -366,6 +391,9 @@ export class GameController {
 
     _goToNextLevel() {
         this.inputHandler.stopContinuousMovement();
+        
+        // Add level completion to score
+        this.score.addCompletedLevel();
         
         this.currentLevelIndex++;
         if (this.currentLevelIndex >= this.levelKeys.length) {
@@ -438,12 +466,18 @@ export class GameController {
         // Send game over data to WebSocket
         if (this.websocketController) {
             const playerData = this.uiManager.getPlayerData();
+            const scoreData = this.score.getScoreData();
             const gameState = {
                 currentCoinCount: state.currentCoinCount,
                 shoppingBasket: state.shoppingBasket,
-                currentLevel: this.currentLevelIndex + 1
+                currentLevel: this.currentLevelIndex + 1,
+                gameScore: scoreData.totalScore,
+                scoreBreakdown: scoreData.breakdown,
+                coinsCollected: scoreData.coinsCollected,
+                levelsCompleted: scoreData.levelsCompleted
             };
             this.websocketController.sendGameEventData('game_over', playerData, gameState);
+            console.log('Game over data sent to WebSocket - ', gameState);
         } else {
             console.warn('No WebSocket controller available for game over event');
         }
@@ -462,6 +496,9 @@ export class GameController {
         this.gameActive = true;
         this.isPaused = false;
         this.currentLevelIndex = 0;
+        
+        // Reset score
+        this.score.reset();
         this.currentMaze = MAZE_LEVELS[this.levelKeys[this.currentLevelIndex]];
         
         if (!this.currentMaze) {
@@ -536,12 +573,12 @@ export class GameController {
         };
 
         try {
-            const orderResponse = await this.uiManager.mockOrderSubmissionWebService(orderData);
+            const orderResponse = await this.invoice.processOrder(orderData);
             
             if (orderResponse.success) {
                 this.uiManager.showInvoice(orderResponse.invoice);
             } else {
-                console.error('Order submission failed');
+                console.error('Order submission failed:', orderResponse.error);
                 alert('Order submission failed. Please try again.');
             }
         } catch (error) {

@@ -53,6 +53,15 @@ server.on('connection', (ws, request) => {
             
             console.log(`📨 Received from client:`, messageData);
             
+            // Handle ping/pong for heartbeat (don't log these to reduce noise)
+            if (messageData.type === 'ping') {
+                ws.send(JSON.stringify({ 
+                    type: 'pong', 
+                    timestamp: new Date().toISOString() 
+                }));
+                return; // Don't log ping messages
+            }
+            
             // Process game over events for leaderboard
             if (messageData.type === 'game_event' && messageData.event === 'game_over') {
                 processGameOverEvent(messageData);

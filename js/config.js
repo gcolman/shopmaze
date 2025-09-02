@@ -79,7 +79,7 @@ export const GAME_CONFIG = {
     GHOST_CHASE_INTERVAL_REDUCTION_PER_LEVEL: 250, // Reduce interval by this much per level
     COIN_SIZE: 20,
     COIN_VALUE: 10,
-    COINS_PER_LEVEL: 25,
+    COINS_PER_LEVEL: 31,
     T_SHIRT_SIZE: 24,
     T_SHIRT_TIMEOUT_SECONDS: 15,
     RED_HAT_COUNT_START: 3,
@@ -192,8 +192,14 @@ export function calculateGhostSettings(levelIndex) {
 // WebSocket Configuration
 // Set window.WEBSOCKET_URL to override automatic detection
 // Examples:
-// window.WEBSOCKET_URL = 'ws://localhost:8080/game-control';
- window.WEBSOCKET_URL = 'wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control';
+ window.WEBSOCKET_URL = 'ws://localhost:8080/game-control';
+//  window.WEBSOCKET_URL = 'wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control';
+
+// Leaderboard API Configuration
+// Set window.LEADERBOARD_URL to override default URL
+// Examples:
+// window.LEADERBOARD_URL = 'http://localhost:8081/leaderboard';
+// window.LEADERBOARD_URL = 'https://api.example.com/leaderboard';
 
 // Note: All window-dependent configuration is handled by config-loader.js
 // This ensures proper initialization order and prevents "window undefined" errors

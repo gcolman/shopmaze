@@ -10,6 +10,10 @@ export class WebSocketController {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000; // 3 seconds
         
+        // Invoice storage
+        this.pendingInvoice = null;
+        this.receivedInvoiceData = null;
+        
         // Dynamic WebSocket URL based on current environment and configuration
         this.websocketUrl = this.getWebSocketUrl();
         this.connect();
@@ -18,9 +22,9 @@ export class WebSocketController {
     // Get the WebSocket URL from configuration
     getWebSocketUrl() {
         // Check for externally configured WebSocket URL
-        console.log("window.WEBSOCKET_URL " ,window.WEBSOCKET_URL);
+        console.log("getWebSocketUrl()1 window.WEBSOCKET_URL " ,window.WEBSOCKET_URL);
         if (window.WEBSOCKET_URL) {
-            //console.log("!!!!return 1", window.WEBSOCKET_URL);
+            console.log("!!!!return 1", window.WEBSOCKET_URL);
             return window.WEBSOCKET_URL;
         }
         
@@ -33,7 +37,7 @@ export class WebSocketController {
             console.log("!!!!return 2", `${protocol}//${hostname}:8080/game-control`);
             return `${protocol}//${hostname}:8080/game-control`;
         } else {
-            //console.log("!!!!return 3", `${protocol}//${hostname.replace('game', 'websocket')}/game-control`);
+            console.log("!!!!return 3", `${protocol}//${hostname.replace('game', 'websocket')}/game-control`);
             // Production fallback - use same host with secure protocol
             return `${protocol}//${hostname.replace('game', 'websocket')}/game-control`;
         }
@@ -41,6 +45,7 @@ export class WebSocketController {
 
     connect() {
         try {
+            console.log("NOW CONNECTING WITH", this.websocketUrl);
             this.websocket = new WebSocket(this.websocketUrl);
             
             this.websocket.onopen = (event) => {
@@ -127,6 +132,14 @@ export class WebSocketController {
                 case 'end':
                     this.handleEndGameCommand();
                     break;
+
+                case 'reset':
+                case 'resetcollection':
+                case 'reset_collection':
+                case 'clearcollection':
+                case 'clear_collection':
+                    this.handleResetCollectionCommand();
+                    break;
                    
                 case 'showinvoice':
                 case 'show_invoice':
@@ -142,6 +155,14 @@ export class WebSocketController {
                 case 'invoice_data':
                 case 'invoicedata':    
                     this.handleInvoiceDataCommand(messageData);
+                    break;
+
+                case 'invoice_pdf':
+                    this.handleInvoiceCommand(messageData);
+                    break;
+
+                case 'invoice_ready':
+                    this.handleInvoiceReadyCommand(messageData);
                     break;
 
                 case 'register_response':
@@ -196,7 +217,24 @@ export class WebSocketController {
 
     handleNewGameCommand() {
         try {
-            this.gameController._restartGame();
+            // Clear the T-shirt collection when admin starts a new game
+            if (this.gameController.tshirtCollection) {
+                this.gameController.tshirtCollection.clearCollection();
+                console.log('WebSocket: Cleared T-shirt collection for admin new game command');
+            }
+            
+            // Clear invoice data for new game
+            this.clearInvoiceData();
+            
+            this.gameController.newGameWithGoButton();
+            
+            // Send success response
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'new', 
+                status: 'success', 
+                message: 'New game started with Go button (T-shirt collection and invoice data cleared)' 
+            });
         } catch (error) {
             console.error('Error creating new game:', error);
             this.sendMessage({ 
@@ -212,7 +250,7 @@ export class WebSocketController {
         try {
             // Only end the game if it's currently active
             if (this.gameController.gameActive && !this.gameController.gameOver) {
-                this.gameController._endGame("Game ended remotely via WebSocket command.");
+                this.gameController._endGame("Game ended remotely via WebSocket command.", 'admin_control');
                 
                 // Send success response
                 this.sendMessage({ 
@@ -237,6 +275,40 @@ export class WebSocketController {
                 command: 'endgame', 
                 status: 'error', 
                 message: 'Failed to end game' 
+            });
+        }
+    }
+
+    handleResetCollectionCommand() {
+        try {
+            // Clear the T-shirt collection
+            if (this.gameController.tshirtCollection) {
+                const countBefore = this.gameController.tshirtCollection.getCount();
+                this.gameController.tshirtCollection.clearCollection();
+                console.log('WebSocket: Cleared T-shirt collection via admin reset command');
+                
+                // Send success response
+                this.sendMessage({ 
+                    type: 'response', 
+                    command: 'reset_collection', 
+                    status: 'success', 
+                    message: `T-shirt collection cleared (${countBefore} items removed)` 
+                });
+            } else {
+                this.sendMessage({ 
+                    type: 'response', 
+                    command: 'reset_collection', 
+                    status: 'error', 
+                    message: 'T-shirt collection not available' 
+                });
+            }
+        } catch (error) {
+            console.error('Error clearing T-shirt collection:', error);
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'reset_collection', 
+                status: 'error', 
+                message: 'Failed to clear T-shirt collection' 
             });
         }
     }
@@ -323,6 +395,470 @@ export class WebSocketController {
                 status: 'error', 
                 message: 'Failed to process invoice data: ' + error.message 
             });
+        }
+    }
+
+    handleInvoiceReadyCommand(messageData) {
+        try {
+            console.log('Invoice ready message received:', messageData);
+            
+            // Extract invoice number from the message
+            let invoiceNumber = null;
+            if (messageData.invoiceNumber) {
+                invoiceNumber = messageData.invoiceNumber;
+            } else if (messageData.data && messageData.data.invoiceNumber) {
+                invoiceNumber = messageData.data.invoiceNumber;
+            } else if (typeof messageData === 'string') {
+                // If the entire messageData is just the invoice number
+                invoiceNumber = messageData;
+            }
+            
+            if (!invoiceNumber) {
+                console.error('No invoice number found in invoice_ready message');
+                this.sendMessage({ 
+                    type: 'response', 
+                    command: 'invoice_ready', 
+                    status: 'error', 
+                    message: 'No invoice number found in message' 
+                });
+                return;
+            }
+            
+            // Store the pending invoice information
+            this.pendingInvoice = {
+                invoiceNumber: invoiceNumber,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Stored pending invoice:', this.pendingInvoice);
+            
+            // Show the download invoice button
+            this.showDownloadInvoiceButton(invoiceNumber);
+            
+            // Send success response
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'invoice_ready', 
+                status: 'success', 
+                message: 'Invoice ready notification processed successfully' 
+            });
+            
+        } catch (error) {
+            console.error('Error processing invoice ready command:', error);
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'invoice_ready', 
+                status: 'error', 
+                message: 'Failed to process invoice ready notification: ' + error.message 
+            });
+        }
+    }
+
+    handleInvoiceCommand(messageData) {
+        try {
+            console.log('Invoice PDF received:', messageData);
+            
+            // Validate message data structure
+            if (!messageData || typeof messageData !== 'object') {
+                throw new Error('Invalid message data format');
+            }
+            
+            // Extract invoice PDF data from the message
+            const invoiceData = messageData.data || messageData;
+            
+            if (!invoiceData.type || invoiceData.type !== 'invoice_pdf') {
+                throw new Error('Expected invoice_pdf type');
+            }
+            
+            if (!invoiceData.base64Data) {
+                throw new Error('Missing base64Data field');
+            }
+            
+            if (!invoiceData.filename) {
+                throw new Error('Missing filename field');
+            }
+            
+            if (!invoiceData.mimeType || invoiceData.mimeType !== 'application/pdf') {
+                throw new Error('Expected application/pdf mimeType');
+            }
+            
+            // Store the invoice data for future viewing
+            this.receivedInvoiceData = invoiceData;
+            
+            // Display the PDF overlay
+            this.showPdfOverlay(invoiceData);
+            
+            // Send success response
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'invoice', 
+                status: 'success', 
+                message: 'Invoice PDF displayed successfully' 
+            });
+            
+        } catch (error) {
+            console.error('Error processing invoice command:', error);
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'invoice', 
+                status: 'error', 
+                message: 'Failed to process invoice PDF: ' + error.message 
+            });
+        }
+    }
+
+    showPdfOverlay(invoiceData) {
+        try {
+            // Validate and debug base64 data
+            console.log("Raw invoice data received:", {
+                type: invoiceData.type,
+                filename: invoiceData.filename,
+                mimeType: invoiceData.mimeType,
+                base64DataType: typeof invoiceData.base64Data,
+                base64Length: invoiceData.base64Data ? invoiceData.base64Data.length : 0
+            });
+
+            // Clean up base64 data (remove any whitespace/newlines)
+            let cleanBase64 = invoiceData.base64Data.replace(/\s/g, '');
+            console.log("Cleaned base64 length:", cleanBase64.length);
+            console.log("Base64 preview (first 100 chars):", cleanBase64.substring(0, 100));
+            console.log("Base64 preview (last 50 chars):", cleanBase64.substring(cleanBase64.length - 50));
+
+            // Validate base64 format
+            const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+            const isValidBase64 = base64Regex.test(cleanBase64);
+            console.log("Is valid base64 format:", isValidBase64);
+
+            // Try to decode base64 to check if it's valid
+            let decodedBytes = null;
+            try {
+                const binaryString = atob(cleanBase64);
+                decodedBytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    decodedBytes[i] = binaryString.charCodeAt(i);
+                }
+                console.log("Base64 decoded successfully. Decoded length:", decodedBytes.length);
+                
+                // Check PDF signature (should start with %PDF)
+                const pdfSignature = String.fromCharCode(...decodedBytes.slice(0, 4));
+                console.log("PDF signature (first 4 bytes):", pdfSignature);
+                console.log("Is valid PDF signature:", pdfSignature === '%PDF');
+                
+                // Check for PDF version
+                const pdfHeader = String.fromCharCode(...decodedBytes.slice(0, 8));
+                console.log("PDF header (first 8 bytes):", pdfHeader);
+                
+            } catch (decodeError) {
+                console.error("Base64 decode error:", decodeError);
+                throw new Error("Invalid base64 data: " + decodeError.message);
+            }
+
+            // Create PDF data URL from cleaned base64
+            const pdfDataUrl = `data:${invoiceData.mimeType};base64,${cleanBase64}`;
+            console.log("PDF Data URL created successfully. Total length:", pdfDataUrl.length);
+
+            // Also create a Blob URL as alternative (sometimes works better for large files)
+            let pdfBlobUrl = null;
+            try {
+                const byteCharacters = atob(cleanBase64);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: invoiceData.mimeType });
+                pdfBlobUrl = URL.createObjectURL(blob);
+                console.log("PDF Blob URL created successfully:", pdfBlobUrl);
+            } catch (blobError) {
+                console.error("Failed to create Blob URL:", blobError);
+            }
+            
+            // Create overlay container
+            const overlay = document.createElement('div');
+            overlay.id = 'pdf-invoice-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.9);
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                font-family: Arial, sans-serif;
+            `;
+            
+            // Create header with filename and close button
+            const header = document.createElement('div');
+            header.style.cssText = `
+                width: 90%;
+                max-width: 800px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+                color: white;
+            `;
+            
+            const title = document.createElement('h3');
+            title.textContent = invoiceData.filename;
+            title.style.cssText = `
+                margin: 0;
+                color: white;
+                font-size: 18px;
+            `;
+            
+            const closeButton = document.createElement('button');
+            closeButton.textContent = '✕ Close';
+            closeButton.style.cssText = `
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            `;
+            closeButton.onclick = () => this.hidePdfOverlay();
+            
+            header.appendChild(title);
+            header.appendChild(closeButton);
+            
+            // Create PDF container with multiple display options
+            const pdfContainer = document.createElement('div');
+            pdfContainer.style.cssText = `
+                width: 90%;
+                height: 80%;
+                max-width: 800px;
+                border: 2px solid #ccc;
+                border-radius: 4px;
+                background-color: white;
+                position: relative;
+            `;
+            
+                   // Simple PDF display approach
+                   console.log('Displaying PDF with simple iframe');
+                   
+                   // Create simple iframe for PDF display
+                   const pdfIframe = document.createElement('iframe');
+                   pdfIframe.src = pdfBlobUrl || pdfDataUrl;
+                   pdfIframe.style.cssText = `
+                       width: 100%;
+                       height: 100%;
+                       border: none;
+                       border-radius: 4px;
+                   `;
+            
+            // Add iframe to container
+            pdfContainer.appendChild(pdfIframe);
+            
+            overlay.appendChild(header);
+            overlay.appendChild(pdfContainer);
+            
+            // Add to document
+            document.body.appendChild(overlay);
+            
+            // End game if active
+            if (this.gameController.gameActive && !this.gameController.gameOver) {
+                this.gameController._endGame("Game ended due to invoice display");
+            }
+            
+            console.log('PDF overlay displayed successfully');
+            
+        } catch (error) {
+            console.error('Error creating PDF overlay:', error);
+            throw new Error('Failed to create PDF overlay: ' + error.message);
+        }
+    }
+
+    hidePdfOverlay() {
+        const overlay = document.getElementById('pdf-invoice-overlay');
+        if (overlay) {
+            overlay.remove();
+            console.log('PDF overlay closed');
+            
+            // Don't restart the game - keep the View Invoice button available
+            // The button will remain in the order confirmation overlay for re-viewing
+        }
+    }
+
+    showDownloadInvoiceButton(invoiceNumber) {
+        try {
+            console.log('Showing download invoice button for invoice:', invoiceNumber);
+            
+            // Check if order confirmation overlay is visible
+            const orderConfirmationOverlay = document.getElementById('orderConfirmationOverlay');
+            if (!orderConfirmationOverlay || orderConfirmationOverlay.style.display === 'none') {
+                console.log('Order confirmation overlay not visible, not showing download button');
+                return;
+            }
+            
+            // Remove any existing download button and waiting messages
+            this.hideDownloadInvoiceButton();
+            this.removeWaitingMessages();
+            
+            // Create download invoice button to replace waiting message
+            const downloadButton = document.createElement('div');
+            downloadButton.id = 'download-invoice-button';
+            downloadButton.className = 'download-invoice-message';
+            downloadButton.style.cssText = `
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                border: 2px solid #28a745;
+                color: white;
+                padding: 16px 20px;
+                border-radius: 12px;
+                text-align: center;
+                font-weight: 600;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 60px;
+                box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+                animation: pulse-green 2s ease-in-out infinite;
+                position: relative;
+                margin: 20px auto 0 auto;
+                z-index: 10;
+                overflow: hidden;
+                white-space: nowrap;
+                max-width: 300px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            `;
+            
+            downloadButton.innerHTML = `
+                <span>Your invoice is ready - View Invoice</span>
+            `;
+            
+            // Add pulsing animation with green theme
+            if (!document.getElementById('download-invoice-styles')) {
+                const style = document.createElement('style');
+                style.id = 'download-invoice-styles';
+                style.textContent = `
+                    @keyframes pulse-green {
+                        0%, 100% {
+                            transform: scale(1);
+                            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+                        }
+                        50% {
+                            transform: scale(1.05);
+                            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+                        }
+                    }
+                    
+                    .download-invoice-message:hover {
+                        background: linear-gradient(135deg, #218838 0%, #1e9a5a 100%);
+                        transform: scale(1.02);
+                        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+                    }
+                    
+                    .download-invoice-message::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(255, 255, 255, 0.1);
+                        z-index: -1;
+                        border-radius: 12px;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            // Add click handler to request/view invoice
+            downloadButton.onclick = () => {
+                // If we already have the invoice data, show it directly
+                if (this.receivedInvoiceData) {
+                    console.log('Reshowing stored invoice data');
+                    this.showPdfOverlay(this.receivedInvoiceData);
+                } else {
+                    // First time - request the invoice from server
+                    console.log('Requesting invoice for first time');
+                    this.requestInvoice(invoiceNumber);
+                }
+            };
+            
+            // Find order confirmation box and append the download button
+            const orderBox = orderConfirmationOverlay.querySelector('.order-confirmation-box');
+            if (orderBox) {
+                orderBox.appendChild(downloadButton);
+                console.log('Download invoice button added to order confirmation overlay');
+            } else {
+                console.error('Could not find order confirmation box to add download button');
+            }
+            
+        } catch (error) {
+            console.error('Error showing download invoice button:', error);
+        }
+    }
+
+    hideDownloadInvoiceButton() {
+        // Remove old style overlay (if exists)
+        const buttonOverlay = document.getElementById('download-invoice-overlay');
+        if (buttonOverlay) {
+            buttonOverlay.remove();
+            console.log('Download invoice overlay removed');
+        }
+        
+        // Remove new style button from order confirmation
+        const downloadButton = document.getElementById('download-invoice-button');
+        if (downloadButton) {
+            downloadButton.remove();
+            console.log('Download invoice button removed from order confirmation');
+        }
+    }
+
+    clearInvoiceData() {
+        // Clear stored invoice data when starting new game or closing order confirmation
+        this.pendingInvoice = null;
+        this.receivedInvoiceData = null;
+        
+        // Also remove any existing download invoice button
+        this.hideDownloadInvoiceButton();
+        
+        console.log('Invoice data and button cleared');
+    }
+
+    removeWaitingMessages() {
+        // Remove any "waiting" messages from the order confirmation overlay
+        const orderConfirmationOverlay = document.getElementById('orderConfirmationOverlay');
+        if (orderConfirmationOverlay) {
+            const waitingMessages = orderConfirmationOverlay.querySelectorAll('.waiting-message');
+            waitingMessages.forEach(message => {
+                message.remove();
+                console.log('Waiting message removed');
+            });
+        }
+    }
+
+    requestInvoice(invoiceNumber) {
+        try {
+            console.log('Requesting invoice:', invoiceNumber);
+            
+            // Send request_invoice message to WebSocket server
+            const requestMessage = {
+                type: 'request_invoice',
+                invoiceNumber: invoiceNumber,
+                timestamp: new Date().toISOString()
+            };
+            
+            this.sendMessage(requestMessage);
+            
+            console.log('Invoice request sent:', requestMessage);
+            
+            // Clear the pending invoice since we've requested it
+            this.pendingInvoice = null;
+            
+            // Note: Don't hide the download button here - it will show "Requested" state
+            // and persist until the order confirmation is closed
+            
+        } catch (error) {
+            console.error('Error requesting invoice:', error);
         }
     }
 

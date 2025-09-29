@@ -54,7 +54,6 @@ export class Score {
         this.coinsCollected += coinCount;
         this.updateDisplay();
         
-        console.log(`Score: Added ${coinCount} coins. Total coins: ${this.coinsCollected}`);
     }
 
     /**
@@ -118,7 +117,6 @@ export class Score {
      * @returns {Object} Current score breakdown
      */
     getScoreData() {
-        console.log("Score: Getting score data ",this.calculateTotal() );
 
         return {
             coinsCollected: this.coinsCollected,

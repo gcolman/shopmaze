@@ -39,6 +39,69 @@ const server = http.createServer((req, res) => {
     // Remove query parameters for file path (cache busting params)
     const cleanPath = pathname.split('?')[0];
     
+    // Handle health check endpoint for OpenShift liveness/readiness probes
+    if (cleanPath === '/health') {
+        const healthResponse = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            service: 'red-hat-quest-game',
+            version: '2.1'
+        };
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Access-Control-Allow-Origin': '*'
+        };
+        
+        res.writeHead(200, headers);
+        res.end(JSON.stringify(healthResponse));
+        
+        // Log the health check request
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] HEALTH ${req.method} ${req.url} -> healthy`);
+        return;
+    }
+    
+    // Handle debug endpoint to check file system
+    if (cleanPath === '/debug') {
+        const fs = require('fs');
+        const debugInfo = {
+            timestamp: new Date().toISOString(),
+            pwd: process.cwd(),
+            files: {},
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                PORT: process.env.PORT,
+                DEPLOYMENT_TYPE: process.env.DEPLOYMENT_TYPE
+            }
+        };
+        
+        // Check if key files exist
+        const checkFiles = ['index.html', 'leaderboard.html', 'js/config.js', 'js/config-loader.js', 'js/leaderboard.js'];
+        checkFiles.forEach(file => {
+            try {
+                const stats = fs.statSync(path.join(ROOT_DIR, file));
+                debugInfo.files[file] = { exists: true, size: stats.size };
+            } catch (err) {
+                debugInfo.files[file] = { exists: false, error: err.message };
+            }
+        });
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*'
+        };
+        
+        res.writeHead(200, headers);
+        res.end(JSON.stringify(debugInfo, null, 2));
+        
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] DEBUG ${req.method} ${req.url} -> debug info`);
+        return;
+    }
+    
     // Default to index.html for root
     if (cleanPath === '/') {
         pathname = '/index.html';
@@ -86,9 +149,11 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, headers);
         res.end(data);
         
-        // Log the request
+        // Log the request (with special attention to JS files)
         const timestamp = new Date().toLocaleTimeString();
-        console.log(`[${timestamp}] ${req.method} ${req.url} -> ${filePath}`);
+        const isJsFile = filePath.endsWith('.js');
+        const logPrefix = isJsFile ? 'JS  ' : 'FILE';
+        console.log(`[${timestamp}] ${logPrefix} ${req.method} ${req.url} -> ${filePath}`);
     });
 });
 

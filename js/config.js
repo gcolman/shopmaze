@@ -192,7 +192,7 @@ export function calculateGhostSettings(levelIndex) {
 // WebSocket Configuration
 // Set window.WEBSOCKET_URL to override automatic detection
 // Examples:
- window.WEBSOCKET_URL = 'ws://localhost:8080/game-control';
+// window.WEBSOCKET_URL = 'ws://localhost:8080/game-control';
 //  window.WEBSOCKET_URL = 'wss://redhat-quest-server-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control';
 
 // Leaderboard API Configuration

@@ -1,5 +1,24 @@
 // Red Hat Quest - Leaderboard JavaScript
 
+// Debug: Verify leaderboard.js is loaded
+console.log('Leaderboard JavaScript loaded successfully');
+
+// Add error handling for uncaught errors
+window.addEventListener('error', (event) => {
+    console.error('Leaderboard: Uncaught error:', event.error);
+    console.error('Leaderboard: Error details:', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+    });
+});
+
+// Add error handling for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Leaderboard: Unhandled promise rejection:', event.reason);
+});
+
 let refreshInterval;
 let lastDataHash = '';
 let lastUpdateTime = '';
@@ -268,27 +287,60 @@ function stopAutoRefresh() {
     }
 }
 
-// Initialize on page load - use simple timeout approach like admin.html
+// Wait for configuration to be ready
+function waitForConfigReady() {
+    return new Promise((resolve) => {
+        // Check if config is already ready
+        if (window.configReady === true) {
+            console.log('Leaderboard: Configuration already ready');
+            resolve();
+            return;
+        }
+        
+        // Listen for config ready event
+        const configReadyHandler = () => {
+            console.log('Leaderboard: Configuration ready event received');
+            window.removeEventListener('shopmaze-config-ready', configReadyHandler);
+            resolve();
+        };
+        
+        window.addEventListener('shopmaze-config-ready', configReadyHandler);
+        
+        // Set a timeout to prevent infinite waiting
+        setTimeout(() => {
+            console.warn('Leaderboard: Configuration timeout - proceeding without waiting');
+            window.removeEventListener('shopmaze-config-ready', configReadyHandler);
+            resolve();
+        }, 5000); // 5 second timeout
+    });
+}
+
+// Initialize when DOM and config are ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Leaderboard: DOM loaded, waiting for configuration...');
+    
+    // Use .then() instead of async/await for better compatibility
+    waitForConfigReady().then(() => {
+        console.log('Leaderboard: Starting initialization...');
+        console.log('Leaderboard: window.LEADERBOARD_URL =', window.LEADERBOARD_URL);
+        console.log('Leaderboard: window.DEPLOYMENT_CONFIG =', window.DEPLOYMENT_CONFIG);
+        console.log('Leaderboard: window.WEBSOCKET_URL =', window.WEBSOCKET_URL);
+        
+        // Set LEADERBOARD_URL from DEPLOYMENT_CONFIG if not already set
+        if (!window.LEADERBOARD_URL && window.DEPLOYMENT_CONFIG && window.DEPLOYMENT_CONFIG.leaderboardUrl) {
+            window.LEADERBOARD_URL = window.DEPLOYMENT_CONFIG.leaderboardUrl;
+            console.log('Leaderboard: Set LEADERBOARD_URL from DEPLOYMENT_CONFIG:', window.LEADERBOARD_URL);
+        }
+        
+        loadLeaderboard();
+        startAutoRefresh();
+    }).catch(error => {
+        console.error('Leaderboard: Error during initialization:', error);
+        // Try to load anyway
+        loadLeaderboard();
+        startAutoRefresh();
+    });
 });
-
-// Wait for configuration to load, then start - matches admin.html pattern
-setTimeout(() => {
-    console.log('Leaderboard: Checking configuration after 2 second delay...');
-    console.log('Leaderboard: window.LEADERBOARD_URL =', window.LEADERBOARD_URL);
-    console.log('Leaderboard: window.DEPLOYMENT_CONFIG =', window.DEPLOYMENT_CONFIG);
-    console.log('Leaderboard: window.WEBSOCKET_URL =', window.WEBSOCKET_URL);
-    
-    // Set LEADERBOARD_URL from DEPLOYMENT_CONFIG if not already set
-    if (!window.LEADERBOARD_URL && window.DEPLOYMENT_CONFIG && window.DEPLOYMENT_CONFIG.leaderboardUrl) {
-        window.LEADERBOARD_URL = window.DEPLOYMENT_CONFIG.leaderboardUrl;
-        console.log('Leaderboard: Set LEADERBOARD_URL from DEPLOYMENT_CONFIG:', window.LEADERBOARD_URL);
-    }
-    
-    loadLeaderboard();
-    startAutoRefresh();
-}, 2000);
 
 // Stop auto-refresh when page is hidden
 document.addEventListener('visibilitychange', () => {

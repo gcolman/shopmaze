@@ -14,7 +14,7 @@ data:
     
     window.DEPLOYMENT_CONFIG = {
       // WebSocket URL for container deployments
-      websocketUrl: 'wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control',
+      websocketUrl: 'wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/game-control',
       
       // Leaderboard API URL for fetching game statistics
       leaderboardUrl: 'http://localhost:8081/leaderboard',
@@ -46,9 +46,9 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: shopmaze-websocket-configxx
+  name: shopmaze-websocket-config
   labels:
-    app: shopmazexx
+    app: shopmaze
     component: frontend
 data:
   # Simple WebSocket URL configuration

@@ -11,7 +11,7 @@ import { Renderer } from './renderer.js';
 import { UIManager } from './uiManager.js';
 import { WebSocketController } from './websocketController.js';
 import { Score } from './score.js';
-import { Invoice } from './invoice.js';
+import { TShirtCollection } from './tshirtCollection.js';
 
 export class GameController {
     constructor() {
@@ -27,7 +27,8 @@ export class GameController {
         this.renderer = new Renderer(this.canvas, this.assetLoader);
         this.uiManager = new UIManager();
         this.score = new Score();
-        this.invoice = new Invoice();
+
+        this.tshirtCollection = new TShirtCollection();
         
         // Game state
         this.currentLevelIndex = 0;
@@ -141,8 +142,13 @@ export class GameController {
         // Show registration overlay first
         this.uiManager.showRegistration();
         
-        // Initialize WebSocket controller early so it's available for registration
+        // Wait for configuration to be ready before initializing WebSocket
+        console.log('GameController: Waiting for configuration to be ready...');
+        await this._waitForConfigReady();
+        
+        // Initialize WebSocket controller after config is ready
         try {
+            console.log('GameController: Initializing WebSocket controller with config...');
             this.websocketController = new WebSocketController(this);
             
             // Pass WebSocket controller reference to UI manager for registration events
@@ -162,6 +168,34 @@ export class GameController {
         if (this.assetLoader.allAssetsLoaded()) {
             this.onAllAssetsLoaded();
         }
+    }
+
+    // Wait for configuration to be ready
+    async _waitForConfigReady() {
+        return new Promise((resolve) => {
+            // Check if config is already ready
+            if (window.configReady === true) {
+                console.log('GameController: Configuration already ready');
+                resolve();
+                return;
+            }
+            
+            // Listen for config ready event
+            const configReadyHandler = () => {
+                console.log('GameController: Configuration ready event received');
+                window.removeEventListener('shopmaze-config-ready', configReadyHandler);
+                resolve();
+            };
+            
+            window.addEventListener('shopmaze-config-ready', configReadyHandler);
+            
+            // Set a timeout to prevent infinite waiting
+            setTimeout(() => {
+                console.warn('GameController: Configuration timeout - proceeding without waiting');
+                window.removeEventListener('shopmaze-config-ready', configReadyHandler);
+                resolve();
+            }, 5000); // 5 second timeout
+        });
     }
 
     async _waitForRegistration() {
@@ -232,6 +266,12 @@ export class GameController {
         
         // Initialize score display
         this.score.initialize();
+        
+        // Initialize T-shirt collection manager
+        this.tshirtCollection.initialize();
+        
+        // Make T-shirt collection accessible from console for debugging
+        window.debugTShirtCollection = this.tshirtCollection;
         
         // Update UI
         const state = this.gameObjectManager.getCurrentState();
@@ -384,7 +424,7 @@ export class GameController {
             );
             
             if (gameOverResult) {
-                this._endGame("Game Over! The ghosts collected all your Red Hats.");
+                this._endGame("Game Over! The ghosts collected all your Red Hats.", 'red_hat_loss');
             }
         }
     }
@@ -447,7 +487,7 @@ export class GameController {
         this.renderer.drawScene(gameState);
     }
 
-    _endGame(message) {
+    _endGame(message, reason = 'normal') {
         this.gameOver = true;
         this.gameActive = false;
         
@@ -462,6 +502,18 @@ export class GameController {
         this.gameObjectManager.stopRedHatSpawning();
         
         const state = this.gameObjectManager.getCurrentState();
+        
+        // Add current session T-shirts to persistent collection
+        console.log('Game over: Current shopping basket:', state.shoppingBasket);
+        console.log('Game over: Shopping basket length:', state.shoppingBasket ? state.shoppingBasket.length : 'undefined');
+        
+        if (state.shoppingBasket && state.shoppingBasket.length > 0) {
+            console.log(`Game over: Adding ${state.shoppingBasket.length} T-shirts to persistent collection`);
+            this.tshirtCollection.addSessionTShirts(state.shoppingBasket);
+            console.log(`Game over: Finished adding T-shirts to persistent collection`);
+        } else {
+            console.log('Game over: No T-shirts in shopping basket to add to collection');
+        }
         
         // Send game over data to WebSocket
         if (this.websocketController) {
@@ -482,12 +534,17 @@ export class GameController {
             console.warn('No WebSocket controller available for game over event');
         }
         
-        this.uiManager.showGameOverOverlay(
-            message,
-            state.shoppingBasket.length > 0,
-            () => this._restartGame(),
-            () => this._showOrderConfirmation()
-        );
+        // If game ended due to red hat loss, go directly to order confirmation
+        if (reason === 'red_hat_loss') {
+            this._showRedHatLossOrderConfirmation();
+        } else if (reason === 'admin_control') {
+            // Auto-submit order and show confirmation of what was submitted
+            this._submitOrderAndShowConfirmation();
+        } else {
+            // Normal game over - automatically restart
+            console.log('Game over:', message);
+            this._restartGame();
+        }
     }
 
     _restartGame() {
@@ -513,8 +570,10 @@ export class GameController {
         this.ghostManager.cleanup();
         
         // Hide all overlays
-        this.uiManager.hideGameOverOverlay();
         this.uiManager.hidePauseOverlay();
+        
+        // Ensure canvas is properly sized
+        this.resizeCanvas();
         
         // Reinitialize everything
         this._initializeGameElements();
@@ -522,17 +581,135 @@ export class GameController {
     }
 
     _showOrderConfirmation() {
-        const state = this.gameObjectManager.getCurrentState();
-        if (state.shoppingBasket.length === 0) return;
+        // Show accumulated T-shirts from all sessions instead of just current basket
+        const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        if (accumulatedTShirts.length === 0) {
+            console.log('No accumulated T-shirts to show in order confirmation');
+            return;
+        }
         
         this.gameActive = false;
         this.inputHandler.stopContinuousMovement();
         
         this.uiManager.showOrderConfirmation(
-            state.shoppingBasket,
+            accumulatedTShirts,
             () => this._closeOrderConfirmation(),
             () => this._submitOrder()
         );
+    }
+
+    _showRedHatLossOrderConfirmation() {
+        // Show accumulated T-shirts from all sessions
+        const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        
+        this.gameActive = false;
+        this.inputHandler.stopContinuousMovement();
+        
+        this.uiManager.showRedHatLossOrderConfirmation(
+            accumulatedTShirts,
+            () => this._closeOrderConfirmation(),
+            () => this._submitOrder()
+        );
+    }
+
+    _showAdminControlOrderConfirmation() {
+        // Show accumulated T-shirts from all sessions
+        const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        console.log('Admin end game: Showing order confirmation with accumulated T-shirts:', accumulatedTShirts);
+        
+        this.gameActive = false;
+        this.inputHandler.stopContinuousMovement();
+        
+        this.uiManager.showAdminControlOrderConfirmation(
+            accumulatedTShirts,
+            () => this._closeAdminOrderConfirmation(),
+            () => this._submitOrder()
+        );
+    }
+
+    async _submitOrderAndShowConfirmation() {
+        // Get accumulated T-shirts before clearing
+        const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        
+        if (accumulatedTShirts.length === 0) {
+            console.log('Admin end game: No T-shirts collected, showing no items message');
+            // Show message that no items were collected
+            this._showNoItemsMessage();
+            return;
+        }
+
+        console.log('Admin end game: Auto-submitting order with T-shirts:', accumulatedTShirts);
+
+        // Prepare order data
+        const playerData = this.uiManager.getPlayerData();
+        const formattedItems = accumulatedTShirts.map(tshirt => ({
+            description: `${tshirt.id.charAt(0).toUpperCase() + tshirt.id.slice(1)} t-Shirt`,
+            quantity: tshirt.quantity,
+            unitPrice: parseFloat(tshirt.cost.toFixed(2))
+        }));
+        
+        const orderData = {
+            customerName: playerData.playerId,
+            customerEmail: playerData.email,
+            items: formattedItems
+        };
+
+        try {
+            // Submit order via WebSocket
+            if (this.websocketController && this.websocketController.isConnected) {
+                this.websocketController.sendMessage({
+                    type: 'order',
+                    data: orderData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                console.log('Admin auto-submit: Order sent via WebSocket successfully');
+                
+                // Clear the collection after successful submission
+                this.tshirtCollection.clearCollection();
+                console.log('Admin auto-submit: Cleared T-shirt collection');
+                
+            } else {
+                console.error('WebSocket not connected - cannot auto-submit order');
+            }
+        } catch (error) {
+            console.error('Admin auto-submit error:', error);
+        }
+
+        // Show confirmation of what was submitted (using preserved data)
+        this.gameActive = false;
+        this.inputHandler.stopContinuousMovement();
+        
+        this.uiManager.showAdminControlOrderConfirmation(
+            accumulatedTShirts,
+            () => this._closeAdminOrderConfirmation(),
+            null // No place order button since it's already submitted
+        );
+    }
+
+    _showNoItemsMessage() {
+        // Show message for admin end game when no items were collected
+        this.gameActive = false;
+        this.inputHandler.stopContinuousMovement();
+        
+        // Use empty basket to trigger the "no items collected" message
+        this.uiManager.showAdminControlOrderConfirmation(
+            [], // Empty basket
+            () => this._closeNoItemsMessage(),
+            null // No place order button
+        );
+    }
+
+    _closeNoItemsMessage() {
+        // Close the no items message and restart game
+        this.uiManager.hideOrderConfirmation();
+        this._restartGame();
+    }
+
+    _closeAdminOrderConfirmation() {
+        // Collection was already cleared during auto-submit, just close UI
+        this.uiManager.hideOrderConfirmation();
+        this._restartGame();
     }
 
     _closeOrderConfirmation() {
@@ -541,45 +718,56 @@ export class GameController {
     }
 
     async _submitOrder() {
-        const state = this.gameObjectManager.getCurrentState();
-        if (state.shoppingBasket.length === 0) return;
+        // Use accumulated T-shirts from all game sessions instead of just current basket
+        const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        
+        if (accumulatedTShirts.length === 0) {
+            console.log('No T-shirts in accumulated collection to submit');
+            return;
+        }
 
-        // Group items by ID and sum quantities
-        const groupedItems = {};
-        state.shoppingBasket.forEach(item => {
-            if (groupedItems[item.id]) {
-                groupedItems[item.id].quantity += 1;
-            } else {
-                groupedItems[item.id] = {
-                    id: item.id,
-                    src: item.src,
-                    cost: item.cost,
-                    quantity: 1
-                };
-            }
-        });
+        console.log('Submitting order with accumulated T-shirts:', accumulatedTShirts);
 
-        // Prepare order data
+        // Prepare order data using accumulated T-shirts in the specified format
         const playerData = this.uiManager.getPlayerData();
+        
+        // Format items to match the required JSON structure
+        const formattedItems = accumulatedTShirts.map(tshirt => ({
+            description: `${tshirt.id.charAt(0).toUpperCase() + tshirt.id.slice(1)} t-Shirt`,
+            quantity: tshirt.quantity,
+            unitPrice: parseFloat(tshirt.cost.toFixed(2))
+        }));
+        
         const orderData = {
-            customerInfo: {
-                username: playerData.username,
-                email: playerData.email,
-                playerId: `player_${Date.now()}`
-            },
-            items: Object.values(groupedItems),
-            orderDate: new Date().toISOString(),
-            gameScore: state.currentCoinCount
+            customerName: playerData.username,
+            customerEmail: playerData.email,
+            items: formattedItems
         };
 
         try {
-            const orderResponse = await this.invoice.processOrder(orderData);
+            console.log('Sending order event via WebSocket with data:', orderData);
             
-            if (orderResponse.success) {
-                this.uiManager.showInvoice(orderResponse.invoice);
+            // Send order event via WebSocket instead of processing locally
+            if (this.websocketController && this.websocketController.isConnected) {
+                this.websocketController.sendMessage({
+                    type: 'order',
+                    data: orderData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                console.log('Order event sent successfully via WebSocket');
+                
+                // Clear the accumulated T-shirt collection after sending order
+                this.tshirtCollection.clearCollection();
+                console.log('Order sent: Cleared accumulated T-shirt collection');
+                
+                // Close the order confirmation since order was sent
+                this.uiManager.hideOrderConfirmation();
+                this._restartGame();
+                
             } else {
-                console.error('Order submission failed:', orderResponse.error);
-                alert('Order submission failed. Please try again.');
+                console.error('WebSocket not connected - cannot send order');
+                alert('Cannot submit order: WebSocket connection not available. Please try again.');
             }
         } catch (error) {
             console.error('Order submission error:', error);
@@ -656,5 +844,67 @@ export class GameController {
             coins: this.gameObjectManager.getCurrentState().currentCoinCount,
             basketItems: this.gameObjectManager.getCurrentState().shoppingBasket.length
         };
+    }
+
+    // New game with "Go!" button - triggered by WebSocket 'new' event
+    newGameWithGoButton() {
+        // Hide all overlays except game canvas
+        this.uiManager.hideAllOverlays();
+        
+        // Reset game state like _restartGame but don't start immediately
+        this.gameOver = false;
+        this.isPaused = true;  // Start paused
+        this.gameActive = false;
+        this.currentLevelIndex = 0;
+        
+        // Reset all game modules
+        this.score.reset();
+        this.gameObjectManager.resetForNewGame();
+        this.player.reset();
+        this.ghostManager.cleanup();
+        this.inputHandler.cleanup();
+        
+        // Load first level
+        this.currentMaze = MAZE_LEVELS[this.levelKeys[this.currentLevelIndex]];
+        
+        if (!this.currentMaze) {
+            console.error('GameController: Failed to load maze for level in newGameWithGoButton:', this.levelKeys[this.currentLevelIndex]);
+            return;
+        }
+        
+        // Ensure canvas is properly sized
+        this.resizeCanvas();
+        
+        // Initialize game elements (this sets up player position, coins, etc.)
+        this._initializeGameElements();
+        
+        // Render the initial game state
+        const objectState = this.gameObjectManager.getCurrentState();
+        const gameState = {
+            maze: this.currentMaze,
+            player: this.player,
+            ghosts: this.ghostManager.getActiveGhosts(),
+            coins: objectState.coins,
+            tShirtInLevel: objectState.tShirtInLevel,
+            redHatInLevel: objectState.redHatInLevel
+        };
+        this.renderer.drawScene(gameState);
+        
+        // Show "Go!" button overlay on canvas
+        this.uiManager.showGoButtonOverlay(() => this._startNewGame());
+    }
+
+    _startNewGame() {
+        // Hide the "Go!" button
+        this.uiManager.hideGoButtonOverlay();
+        
+        // Start the game
+        this.isPaused = false;
+        this.gameActive = true;
+        
+        // Start red hat spawning timer
+        this.gameObjectManager.startRedHatSpawning();
+        
+        this.gameLoop();
     }
 }

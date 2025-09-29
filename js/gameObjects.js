@@ -188,14 +188,26 @@ export class GameObjectManager {
 
     // Spawn a t-shirt in the level
     spawnTShirt() {
-        if (this.tShirtInLevel) return false; // Already has a t-shirt
+        console.log('GameObjects: Attempting to spawn T-shirt. Current coins:', this.currentCoinCount);
+        
+        if (this.tShirtInLevel) {
+            console.log('GameObjects: T-shirt already exists in level, not spawning new one');
+            return false; // Already has a t-shirt
+        }
 
         const tShirts = this.assetLoader.getTShirts();
+        console.log('GameObjects: Available T-shirts:', tShirts.map(t => `${t.id}(threshold:${t.spawnThreshold}, collected:${t.collected})`));
+        
         const eligibleTShirts = tShirts.filter(tShirt => 
             !tShirt.collected && this.currentCoinCount >= tShirt.spawnThreshold
         );
+        
+        console.log('GameObjects: Eligible T-shirts for spawning:', eligibleTShirts.map(t => `${t.id}(threshold:${t.spawnThreshold})`));
 
-        if (eligibleTShirts.length === 0) return false;
+        if (eligibleTShirts.length === 0) {
+            console.log('GameObjects: No eligible T-shirts to spawn');
+            return false;
+        }
 
         // Choose random eligible t-shirt
         const selectedConfig = eligibleTShirts[Math.floor(Math.random() * eligibleTShirts.length)];
@@ -203,11 +215,13 @@ export class GameObjectManager {
         // Find spawn position
         const spawnPosition = this._findValidTShirtSpawnPosition();
         if (!spawnPosition) {
+            console.log('GameObjects: Could not find valid spawn position for T-shirt');
             return false;
         }
 
         // Final validation before creating t-shirt
         if (!this._isValidSpawnPosition(this.currentMaze, spawnPosition.x, spawnPosition.y)) {
+            console.log('GameObjects: Spawn position validation failed');
             return false;
         }
 
@@ -217,6 +231,7 @@ export class GameObjectManager {
             this.removeTShirtFromLevel();
         });
 
+        console.log('GameObjects: Successfully spawned T-shirt:', selectedConfig.id, 'at position:', spawnPosition);
         return true;
     }
 
@@ -413,21 +428,30 @@ export class GameObjectManager {
 
     // Check and handle t-shirt collection
     checkTShirtCollection(playerGridX, playerGridY) {
-        if (!this.tShirtInLevel) return null;
+        if (!this.tShirtInLevel) {
+            // console.log('GameObjects: No T-shirt in level to collect');
+            return null;
+        }
         
         if (this.tShirtInLevel.checkCollision(playerGridX, playerGridY)) {
+            console.log('GameObjects: Player collided with T-shirt:', this.tShirtInLevel.id, 'Cost:', this.tShirtInLevel.cost, 'Player coins:', this.currentCoinCount);
             const result = this.tShirtInLevel.tryCollect(this.currentCoinCount);
+            console.log('GameObjects: T-shirt collection result:', result);
             
             if (result.success) {
                 // Store the t-shirt ID before removing it
                 const tShirtId = this.tShirtInLevel.id;
                 
-                // Add to shopping basket
-                this.shoppingBasket.push({
+                const tshirtItem = {
                     id: this.tShirtInLevel.id,
                     cost: this.tShirtInLevel.cost,
                     src: this.tShirtInLevel.img.src
-                });
+                };
+                
+                // Add to shopping basket
+                this.shoppingBasket.push(tshirtItem);
+                console.log('GameObjects: Added T-shirt to shopping basket:', tshirtItem);
+                console.log('GameObjects: Shopping basket now contains:', this.shoppingBasket);
                 
                 this.currentCoinCount -= result.cost;
                 this.removeTShirtFromLevel();

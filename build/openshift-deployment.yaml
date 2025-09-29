@@ -14,11 +14,9 @@ data:
     
     window.DEPLOYMENT_CONFIG = {
       // WebSocket URL for real-time game communication
-      websocketUrl: 'wss://shopmaze-websocket-route-gcolman1-dev.apps.cluster-l7rns.l7rns.sandbox1431.opentlc.com/game-control',
-      
+      websocketUrl: 'wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control',
       // Leaderboard API URL for fetching game statistics (external project)
-      leaderboardUrl: 'https://shopmaze-http-route-gcolman1-dev.apps.cluster-l7rns.l7rns.sandbox1431.opentlc.com/leaderboard',
-      
+      leaderboardUrl: 'https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard',
       // Environment settings
       environment: 'production',
       
@@ -61,22 +59,21 @@ data:
     
     console.log('Red Hat Quest: Loaded game-only deployment configuration', window.DEPLOYMENT_CONFIG);
     console.log('Red Hat Quest: Using external WebSocket and app servers');
-
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: shopmaze-websocket-config
+  name: shopmaze-websocket-configxx
   labels:
-    app: shopmaze
+    app: shopmazexx
     component: frontend
 data:
   # Simple WebSocket URL configuration
   # Simple WebSocket URL configuration
-  WEBSOCKET_URL:   "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/game-control"
-  websocketUrl:    "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/game-control"
-  LEADERBOARD_URL: "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/leaderboard"
-  leaderboardUrl:  "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control/leaderboard"
+  WEBSOCKET_URL:   "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
+  websocketUrl:    "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
+  LEADERBOARD_URL: "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
+  leaderboardUrl:  "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
 
 
 ---
@@ -115,12 +112,12 @@ spec:
         env:
         - name: DEPLOYMENT_TYPE
           value: "static"
-        - name: NGINX_PORT
+        - name: PORT
           value: "8080"
         - name: EXTERNAL_WEBSOCKET_URL
-          value: "wss://shopmaze-websocket-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/game-control"
+          value: "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
         - name: EXTERNAL_LEADERBOARD_URL
-          value: "https://shopmaze-http-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/leaderboard"
+          value: "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
         volumeMounts:
         - name: config-volume
           mountPath: /opt/app-root/src/config

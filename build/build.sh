@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Red Hat Quest Game - Docker Build Script
-# Builds the multi-service container with WebSocket support
+# Red Hat Quest Game - Podman Build Script
+# Builds the multi-service container with WebSocket support for Intel architecture
 
 set -e
 
@@ -12,12 +12,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🎮 Red Hat Quest - Docker Build Script${NC}"
+echo -e "${BLUE}🎮 Red Hat Quest - Podman Build Script${NC}"
 echo -e "${BLUE}=====================================${NC}"
 
 # Default values
 IMAGE_NAME="redhat-quest"
-TAG="2.1-websocket"
+TAG="latest"
 REGISTRY=""
 PUSH=false
 
@@ -46,9 +46,9 @@ while [[ $# -gt 0 ]]; do
             echo "  -h, --help           Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                                          # Build locally"
-            echo "  $0 -t latest                               # Build with 'latest' tag"
-            echo "  $0 -r quay.io/myorg -t v2.1 -p           # Build and push to registry"
+            echo "  $0                                          # Build locally for Intel"
+            echo "  $0 -t latest                               # Build with 'latest' tag for Intel"
+            echo "  $0 -r quay.io/myorg -t v2.1 -p           # Build and push Intel image to registry"
             exit 0
             ;;
         *)
@@ -68,13 +68,12 @@ echo ""
 # Check if required files exist
 echo -e "${YELLOW}🔍 Checking required files...${NC}"
 REQUIRED_FILES=(
-    "containerconfig/Dockerfile"
-    "package.json"
-    "websocket-server.js"
-    "index.html"
-    "style.css"
-    "js/main.js"
-    "assets/"
+    "Dockerfile"
+    "../package.json"
+    "../index.html"
+    "../js/main.js"
+    "../assets/"
+    "../css/"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
@@ -87,21 +86,21 @@ done
 
 echo ""
 
-# Build the Docker image
-echo -e "${YELLOW}🔨 Building Docker image...${NC}"
-echo -e "  Command: docker build -f containerconfig/Dockerfile -t ${FULL_IMAGE_NAME} ."
+# Build the Podman image for Intel architecture
+echo -e "${YELLOW}🔨 Building Podman image for Intel (x86_64) architecture...${NC}"
+echo -e "  Command: podman build --platform linux/amd64 -f Dockerfile -t ${FULL_IMAGE_NAME} .."
 echo ""
 
-if docker build -f containerconfig/Dockerfile -t "${FULL_IMAGE_NAME}" .; then
+if podman build --platform linux/amd64 -f Dockerfile -t "${FULL_IMAGE_NAME}" ..; then
     echo ""
-    echo -e "${GREEN}✅ Docker image built successfully!${NC}"
+    echo -e "${GREEN}✅ Podman image built successfully!${NC}"
     echo -e "  Image: ${FULL_IMAGE_NAME}"
     
     # Show image size
-    SIZE=$(docker images "${FULL_IMAGE_NAME}" --format "table {{.Size}}" | tail -n 1)
+    SIZE=$(podman images "${FULL_IMAGE_NAME}" --format "table {{.Size}}" | tail -n 1)
     echo -e "  Size: ${SIZE}"
 else
-    echo -e "${RED}❌ Docker build failed!${NC}"
+    echo -e "${RED}❌ Podman build failed!${NC}"
     exit 1
 fi
 
@@ -110,7 +109,7 @@ if [ "$PUSH" = true ]; then
     echo ""
     echo -e "${YELLOW}📤 Pushing image to registry...${NC}"
     
-    if docker push "${FULL_IMAGE_NAME}"; then
+    if podman push "${FULL_IMAGE_NAME}"; then
         echo -e "${GREEN}✅ Image pushed successfully!${NC}"
         echo -e "  Registry: ${FULL_IMAGE_NAME}"
     else
@@ -123,15 +122,13 @@ echo ""
 echo -e "${GREEN}🎉 Build completed successfully!${NC}"
 echo ""
 echo -e "${BLUE}🚀 Quick start commands:${NC}"
-echo -e "  Local run:       docker run -p 8000:8000 -p 8080:8080 ${FULL_IMAGE_NAME}"
-echo -e "  Compose:         docker-compose up"
-echo -e "  Health check:    curl http://localhost:8080/health"
+echo -e "  Local run:       podman run -p 8001:8001 ${FULL_IMAGE_NAME}"
+echo -e "  Compose:         podman-compose up"
+echo -e "  Health check:    curl http://localhost:8001/"
 echo ""
 echo -e "${BLUE}🌐 Access URLs (when running):${NC}"
-echo -e "  Game:            http://localhost:8000"
-echo -e "  Admin Panel:     http://localhost:8000/admin.html"
-echo -e "  Leaderboard:     http://localhost:8000/leaderboard.html"
-echo -e "  WebSocket:       ws://localhost:8080"
-echo -e "  API Health:      http://localhost:8080/health"
+echo -e "  Game:            http://localhost:8001"
+echo -e "  Admin Panel:     http://localhost:8001/admin.html"
+echo -e "  Leaderboard:     http://localhost:8001/leaderboard.html"
 echo ""
 

@@ -1,5 +1,5 @@
 # Game-Only Red Hat Quest Deployment
-# Lightweight static file server for the game without WebSocket functionality
+# Lightweight static file server for the game
 FROM registry.redhat.io/ubi9/nginx-122:latest
 
 # Set working directory
@@ -39,9 +39,22 @@ RUN mkdir -p /opt/app-root/etc/nginx.default.d && \
     echo '    expires -1;'; \
     echo '}'; \
     echo ''; \
-    echo '# Serve all static assets including CSS'; \
-    echo 'location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {'; \
-    echo '    add_header Content-Type "";'; \
+    echo '# Serve JavaScript files with correct content type'; \
+    echo 'location ~* \.js$ {'; \
+    echo '    add_header Content-Type "application/javascript";'; \
+    echo '    expires 1h;'; \
+    echo '    add_header Cache-Control "public, immutable";'; \
+    echo '}'; \
+    echo ''; \
+    echo '# Serve CSS files with correct content type'; \
+    echo 'location ~* \.css$ {'; \
+    echo '    add_header Content-Type "text/css";'; \
+    echo '    expires 1h;'; \
+    echo '    add_header Cache-Control "public, immutable";'; \
+    echo '}'; \
+    echo ''; \
+    echo '# Serve other static assets'; \
+    echo 'location ~* \.(png|jpg|jpeg|gif|ico|svg)$ {'; \
     echo '    expires 1h;'; \
     echo '    add_header Cache-Control "public, immutable";'; \
     echo '}'; \
@@ -75,7 +88,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Add labels for better container management
 LABEL maintainer="Red Hat Quest v2.1 Game - Static Version" \
-      description="A fun maze game served as static files without WebSocket functionality" \
+      description="A fun maze game served as static files" \
       version="2.1-static" \
       port="8080"
 

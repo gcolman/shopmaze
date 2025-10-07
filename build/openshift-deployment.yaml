@@ -14,9 +14,10 @@ data:
     
     window.DEPLOYMENT_CONFIG = {
       // WebSocket URL for real-time game communication
-      websocketUrl: 'wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control',
+
+      websocketUrl: 'wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control',
       // Leaderboard API URL for fetching game statistics (external project)
-      leaderboardUrl: 'https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard',
+      leaderboardUrl: 'https://shopmaze-http-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/leaderboard',
       // Environment settings
       environment: 'production',
       
@@ -70,10 +71,10 @@ metadata:
 data:
   # Simple WebSocket URL configuration
   # Simple WebSocket URL configuration
-  WEBSOCKET_URL:   "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
-  websocketUrl:    "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
-  LEADERBOARD_URL: "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
-  leaderboardUrl:  "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
+  WEBSOCKET_URL:   "wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control"
+  websocketUrl:    "wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control"
+  LEADERBOARD_URL: "https://shopmaze-http-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com"
+  leaderboardUrl:  "https://shopmaze-http-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com"
 
 
 ---
@@ -115,9 +116,9 @@ spec:
         - name: PORT
           value: "8080"
         - name: EXTERNAL_WEBSOCKET_URL
-          value: "wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control"
+          value: "wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control"
         - name: EXTERNAL_LEADERBOARD_URL
-          value: "https://shopmaze-http-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/leaderboard"
+          value: "https://shopmaze-http-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com"
         volumeMounts:
         - name: config-volume
           mountPath: /opt/app-root/src/config
@@ -194,7 +195,7 @@ metadata:
     route-type: game
   annotations:
     description: "Main game application route"
-    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/timeout: 60000s
     haproxy.router.openshift.io/hsts_header: "max-age=31536000;includeSubDomains;preload"
 spec:
   to:
@@ -218,7 +219,7 @@ metadata:
     route-type: admin
   annotations:
     description: "Admin panel route for game management"
-    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/timeout: 60000s
 spec:
   path: /admin.html
   to:
@@ -242,7 +243,7 @@ metadata:
     route-type: leaderboard
   annotations:
     description: "Leaderboard route for viewing game statistics"
-    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/timeout: 60000s
 spec:
   path: /leaderboard.html
   to:

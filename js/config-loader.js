@@ -209,11 +209,39 @@
                 window.LEADERBOARD_URL = window.SHOPMAZE_CONFIG.leaderboardUrl;
             }
             
-            // Handle deployment config overrides
+            // Handle deployment config overrides, but fix domain mismatches
             if (window.DEPLOYMENT_CONFIG && window.DEPLOYMENT_CONFIG.leaderboardUrl) {
-                window.LEADERBOARD_URL = window.DEPLOYMENT_CONFIG.leaderboardUrl;
+                const deploymentUrl = window.DEPLOYMENT_CONFIG.leaderboardUrl;
+                const currentHost = window.location.hostname;
+                
+                // Check if the deployment URL is from a different domain (CORS issue)
+                try {
+                    const deploymentUrlObj = new URL(deploymentUrl);
+                    if (deploymentUrlObj.hostname !== currentHost) {
+                        console.warn('Leaderboard: DEPLOYMENT_CONFIG URL has different domain, fixing to prevent CORS:', deploymentUrl);
+                        // Fix the domain to match current host
+                        window.LEADERBOARD_URL = `${window.location.protocol}//${currentHost}/leaderboard`;
+                    } else {
+                        window.LEADERBOARD_URL = deploymentUrl;
+                    }
+                } catch (e) {
+                    console.warn('Leaderboard: Invalid deployment URL, using fallback:', deploymentUrl);
+                    window.LEADERBOARD_URL = `${window.location.protocol}//${currentHost}/leaderboard`;
+                }
             }
-            window.LEADERBOARD_URL = 'http://localhost:8099/leaderboard';
+            
+            // Set default leaderboard URL for production environment
+            if (!window.LEADERBOARD_URL) {
+                // Use the same domain as the current page but with the correct path
+                const currentHost = window.location.hostname;
+                if (currentHost.includes('localhost') || currentHost.includes('127.0.0.1')) {
+                    window.LEADERBOARD_URL = 'http://localhost:8099/leaderboard';
+                } else {
+                    // For production, use the same domain as the current page
+                    const protocol = window.location.protocol;
+                    window.LEADERBOARD_URL = `${protocol}//${currentHost}/leaderboard`;
+                }
+            }
             console.log("leaderboard url set to", window.LEADERBOARD_URL);
             // For quick testing - uncomment one of these lines:
             // window.LEADERBOARD_URL = 'http://localhost:8081/leaderboard';

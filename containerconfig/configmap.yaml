@@ -17,7 +17,7 @@ data:
       websocketUrl: 'wss://shopmaze-websocket-route-demo-frontend.apps.cluster-75kk9.75kk9.sandbox2022.opentlc.com/game-control',
       
       // Leaderboard API URL for fetching game statistics
-      leaderboardUrl: 'http://localhost:8081/leaderboard',
+      leaderboardUrl: 'https://shopmaze-http-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com',
       
       // Environment settings
       environment: 'production',

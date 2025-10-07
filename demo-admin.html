@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Admin - Invoice Demo Interface</title>
+    <link rel="stylesheet" href="css/gamestyle.css">
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto 40px auto;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            width: calc(100% - 40px);
+            box-sizing: border-box;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ee0000;
+            padding-bottom: 20px;
+        }
+
+        .demo-header h1 {
+            color: #ee0000;
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .demo-header p {
+            margin: 10px 0 0 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .demo-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-panel h3 {
+            color: #ee0000;
+            margin-top: 0;
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(238, 0, 0, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #ee0000;
+            box-shadow: 0 0 10px rgba(238, 0, 0, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ee0000, #cc0000);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .btn:hover {
+            background: linear-gradient(45deg, #cc0000, #aa0000);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(238, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            background: linear-gradient(45deg, #aa0000, #880000);
+            transform: translateY(0px) scale(0.98);
+            box-shadow: 0 2px 8px rgba(238, 0, 0, 0.6);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-display {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-display h4 {
+            margin-top: 0;
+            color: #ee0000;
+        }
+
+        .status-text {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #00ff00;
+        }
+
+        .demo-preview {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-preview h3 {
+            color: #ee0000;
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.6em;
+        }
+
+        #mockOrderOverlay {
+            position: relative;
+            background: white;
+            color: black;
+            border-radius: 15px;
+            padding: 0;
+            max-width: 600px;
+            max-height: 80vh;
+            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: none;
+            overflow: hidden;
+        }
+
+        #mockOrderOverlay .order-content {
+            padding: 30px;
+            height: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #ee0000 #f1f1f1;
+        }
+
+        #mockOrderOverlay .order-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #mockOrderOverlay .order-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #mockOrderOverlay .order-content::-webkit-scrollbar-thumb {
+            background: #ee0000;
+            border-radius: 4px;
+        }
+
+        #mockOrderOverlay .order-content::-webkit-scrollbar-thumb:hover {
+            background: #cc0000;
+        }
+
+        .red-hat-logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            display: block;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            width: auto;
+            margin: 0;
+            padding: 5px;
+        }
+
+        .close-btn:hover {
+            color: #ee0000;
+            background: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        @media (max-width: 768px) {
+            .demo-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-container {
+                padding: 20px;
+                margin: 0 10px 40px 10px;
+                width: calc(100% - 20px);
+            }
+            
+            body {
+                padding: 10px;
+            }
+            
+            #mockOrderOverlay {
+                max-width: 95vw;
+                max-height: 75vh;
+                padding: 0;
+                margin: 5px auto;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+            }
+            
+            #mockOrderOverlay .order-content {
+                padding: 15px;
+                max-height: 75vh;
+            }
+            
+            .demo-preview {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🎮 Invoice Demo Interface</h1>
+            <p>Simulate customer order confirmation and invoice fetching for presentations</p>
+        </div>
+
+        <div class="demo-controls">
+            <div class="control-panel">
+                <h3>🎯 Demo Configuration</h3>
+                <div class="form-group">
+                    <label for="invoiceNumberInput">Invoice Number:</label>
+                    <input type="text" id="invoiceNumberInput" value="1001" placeholder="Enter invoice number">
+                </div>
+                <button class="btn" id="fetchInvoiceBtn">Fetch Invoice & Show Order</button>
+                <button class="btn" id="triggerInvoiceReadyBtn">Trigger "Invoice Ready" Event</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>🔌 WebSocket Connection</h3>
+                <div class="form-group">
+                    <label for="websocketUrlInput">WebSocket URL:</label>
+                    <input type="text" id="websocketUrlInput" value="ws://localhost:8080/game-control" placeholder="WebSocket server URL">
+                </div>
+                <button class="btn" id="connectBtn">Connect to WebSocket</button>
+                <button class="btn" id="disconnectBtn" disabled>Disconnect</button>
+                
+                <div class="status-display">
+                    <h4>Connection Status:</h4>
+                    <div id="connectionStatus" class="status-text">Disconnected</div>
+                </div>
+            </div>
+
+            <div class="demo-preview">
+                <h3>📋 Customer Order Overlay Preview</h3>
+                <div id="mockOrderOverlay">
+                    <button class="close-btn" id="closeMockOrder">&times;</button>
+                    <div class="order-content" style="height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+                        <img src="assets/red_hat_icon.png" alt="Red Hat" class="red-hat-logo">
+                        <h2 style="text-align: center; color: #ee0000; margin-bottom: 30px;">Order Confirmation</h2>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="margin-top: 0; color: #333;">Customer Information</h3>
+                        <p><strong>Player ID:</strong> <span id="mockPlayerId">Loading...</span></p>
+                        <p><strong>Invoice Number:</strong> <span id="mockInvoiceNumber">Loading...</span></p>
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="margin-top: 0; color: #333;">Order Items</h3>
+                        <div id="mockOrderItems">
+                            <div style="text-align: center; color: #666; padding: 20px;">
+                                Please fetch an invoice to display order items
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="invoiceButtonContainer" style="text-align: center; padding: 15px; background: #e9ecef; border-radius: 10px; margin-bottom: 20px;">
+                        <div id="waitingMessage" style="color: #666; font-style: italic;">Your invoice will appear shortly, please wait...</div>
+                        <button id="mockViewInvoiceBtn" class="btn" style="display: none; width: auto; margin: 10px auto; -webkit-tap-highlight-color: rgba(0,0,0,0.1); cursor: pointer; touch-action: manipulation;">
+                            View Invoice
+                        </button>
+                    </div>
+
+                        <div style="text-align: center;">
+                            <button class="btn" style="width: auto; margin: 0 10px;">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice PDF Overlay (same as game) -->
+    <div id="invoicePdfOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; padding: 20px; box-sizing: border-box;">
+        <div style="position: relative; width: 100%; height: 100%; background: white; border-radius: 10px; overflow: hidden;">
+            <button id="closeInvoicePdf" style="position: absolute; top: 10px; right: 10px; z-index: 10001; background: #ee0000; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                Close Invoice
+            </button>
+            <iframe id="invoicePdfFrame" style="width: 100%; height: 100%; border: none; border-radius: 0 0 10px 10px;"></iframe>
+        </div>
+    </div>
+
+    <script type="module" src="js/demo-admin.js"></script>
+</body>
+</html>

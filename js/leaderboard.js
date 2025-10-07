@@ -36,10 +36,10 @@ async function loadLeaderboard(silent = false) {
         console.log("Leaderboard: window.LEADERBOARD_URL " ,window.LEADERBOARD_URL);
         console.log("Leaderboard: window.DEPLOYMENT_CONFIG ", window.DEPLOYMENT_CONFIG);
         
-        // Use ConfigMap URL or fallback to external service
+        // Use ConfigMap URL or fallback to same domain
         const leaderboardUrl = window.LEADERBOARD_URL || 
                              (window.DEPLOYMENT_CONFIG && window.DEPLOYMENT_CONFIG.leaderboardUrl) || 
-                             'https://shopmaze-http-route-gcolman1-dev.apps.rm2.thpm.p1.openshiftapps.com/leaderboard';
+                             `${window.location.protocol}//${window.location.hostname}/leaderboard`;
         console.log('Leaderboard: Final URL:', leaderboardUrl);
         const response = await fetch(leaderboardUrl);
         console.log('>>>>>>Response:', response);
@@ -262,11 +262,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Auto-refresh every 10 seconds for more immediate updates
+// Auto-refresh every 5 seconds for more immediate updates
 function startAutoRefresh() {
     refreshInterval = setInterval(() => {
         loadLeaderboard(true); // Silent refresh
-    }, 10000);
+    }, 5000);
 
     // Add visual indicator
     const status = document.getElementById('autoRefreshStatus');

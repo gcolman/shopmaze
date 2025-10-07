@@ -557,7 +557,11 @@
                 return window.WEBSOCKET_URL;
             }
             
-            // Fallback to environment-based detection
+            // Default WebSocket URL
+            return 'wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control';
+            
+            // Fallback to environment-based detection (commented out)
+            /*
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const hostname = window.location.hostname;
             
@@ -570,6 +574,7 @@
                 const fallbackUrl = `${protocol}//${hostname.replace('game', 'websocket')}`;
                 return fallbackUrl;
             }
+            */
         }
 
         // Initialize

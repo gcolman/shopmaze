@@ -10,12 +10,27 @@ export class WebSocketController {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000; // 3 seconds
         
+        // Server game status tracking
+        this.serverGameStatus = null;
+        this.initialStatusReceived = false;
+        this.gameStartCallback = null;
+        this.registrationComplete = false;
+        this.firstTimeUser = true;
+        
+        // Store player data for reconnection
+        this.storedPlayerData = null;
+        
         // Invoice storage
         this.pendingInvoice = null;
         this.receivedInvoiceData = null;
         
         // Dynamic WebSocket URL based on current environment and configuration
         this.websocketUrl = this.getWebSocketUrl();
+        
+        // Heartbeat mechanism to prevent HAProxy timeout (60s)
+        this.heartbeatInterval = null;
+        this.heartbeatDelay = 30000; // Send ping every 30 seconds
+        
         this.connect();
     }
 
@@ -51,7 +66,23 @@ export class WebSocketController {
             this.websocket.onopen = (event) => {
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
-                this.sendMessage({ type: 'client_connected', game: 'Red Hat Quest v2.1' });
+                
+                // Send appropriate connection message based on registration status
+                if (this.storedPlayerData && this.storedPlayerData.playerId) {
+                    // Send reconnection message for existing player
+                    this.sendMessage({ 
+                        type: 'register', 
+                        playerId: this.storedPlayerData.playerId,
+                        timestamp: new Date().toISOString()
+                    });
+                    console.log('Sent reconnected message for player:', this.storedPlayerData.playerId);
+                } else {
+                    // Send initial connection message for new client
+                    this.sendMessage({ type: 'client_connected', game: 'Red Hat Quest v2.1' });
+                    console.log('Sent initial client_connected message');
+                }
+                
+                this.startHeartbeat();
             };
 
             this.websocket.onmessage = (event) => {
@@ -60,12 +91,14 @@ export class WebSocketController {
 
             this.websocket.onclose = (event) => {
                 this.isConnected = false;
+                this.stopHeartbeat();
                 this.handleReconnection();
             };
 
             this.websocket.onerror = (error) => {
                 console.error('WebSocket error:', error);
                 this.isConnected = false;
+                this.stopHeartbeat();
             };
 
         } catch (error) {
@@ -78,7 +111,7 @@ export class WebSocketController {
         try {
             let messageData;
             let command;
-            console.log("received message", event.data);
+            console.log(">>>>received message", event.data);
             // Try to parse as JSON first, fall back to plain text
             try {
                 messageData = JSON.parse(event.data);
@@ -152,10 +185,6 @@ export class WebSocketController {
                     console.log("received direct-message", messageData);
                     break;
 
-                case 'invoice_data':
-                case 'invoicedata':    
-                    this.handleInvoiceDataCommand(messageData);
-                    break;
 
                 case 'invoice_pdf':
                     this.handleInvoiceCommand(messageData);
@@ -163,6 +192,10 @@ export class WebSocketController {
 
                 case 'invoice_ready':
                     this.handleInvoiceReadyCommand(messageData);
+                    break;
+
+                case 'game_status':
+                    this.handleGameStatusCommand(messageData);
                     break;
 
                 case 'register_response':
@@ -313,6 +346,244 @@ export class WebSocketController {
         }
     }
 
+    handleGameStatusCommand(messageData) {
+        try {
+            // Extract the status from the message data
+            const status = messageData.status || messageData.game_status;
+            
+            if (!status) {
+                console.warn('Game status command received without status field');
+                this.sendMessage({ 
+                    type: 'response', 
+                    command: 'game_status', 
+                    status: 'error', 
+                    message: 'No status provided in game_status command' 
+                });
+                return;
+            }
+
+            console.log(`Game status command received: ${status}`);
+            
+            // Update server status tracking
+            this.serverGameStatus = status.toLowerCase();
+            
+            // If this is the first status received and we have a pending game start callback
+            // BUT only process it if registration is complete
+            if (!this.initialStatusReceived && this.gameStartCallback && this.registrationComplete) {
+                this.initialStatusReceived = true;
+                console.log(`Initial server status after registration: ${this.serverGameStatus}`);
+                
+                if (this.serverGameStatus === 'start') {
+                    // Server says game should start, proceed with normal game start
+                    console.log('Server allows game start, starting game normally');
+                    this.gameStartCallback();
+                    this.gameStartCallback = null;
+                } else if (this.serverGameStatus === 'end') {
+                    // Server says game is ended, show waiting overlay
+                    console.log('Server game is ended, showing waiting overlay');
+                    this.gameController.uiManager.hideAllOverlays();
+                    this.gameController.uiManager.showWaitingForGameOverlay();
+                    this.gameStartCallback = null;
+                } else if (this.serverGameStatus === 'pause') {
+                    // Server says game is paused, start but immediately pause
+                    console.log('Server game is paused, starting then pausing');
+                    this.gameStartCallback();
+                    setTimeout(() => this.gameController.pauseGame(), 100);
+                    this.gameStartCallback = null;
+                }
+                return;
+            }
+            
+            // If we received status but registration isn't complete yet, just store it
+            if (!this.registrationComplete) {
+                console.log(`Server status received before registration: ${this.serverGameStatus} - storing for later`);
+                return;
+            }
+            
+            // Mark that we've received initial status
+            this.initialStatusReceived = true;
+
+            // Handle different game status values
+            switch (status.toLowerCase()) {
+                case 'start':
+                    // Update server status
+                    this.serverGameStatus = 'start';
+                    
+                    console.log('Start command received - checking current state');
+                    console.log('Current game state - gameActive:', this.gameController.gameActive, 'gameOver:', this.gameController.gameOver);
+                    
+                    // Check if order confirmation is showing
+                    const orderOverlay = this.gameController.uiManager.elements.orderConfirmationOverlay;
+                    const isOrderShowing = orderOverlay && orderOverlay.style.display !== 'none';
+                    
+                    // Check if we're showing waiting overlay
+                    const waitingOverlay = document.getElementById('waitingForGameOverlay');
+                    const isWaitingShowing = waitingOverlay && waitingOverlay.style.display !== 'none';
+                    
+                    console.log('Overlay states - Order showing:', isOrderShowing, 'Waiting showing:', isWaitingShowing);
+                    
+                    if (waitingOverlay) {
+                        // Hide waiting overlay and start new game
+                        console.log('Hiding waiting overlay and starting new game');
+                        this.gameController.uiManager.hideAllOverlays();
+                        this.gameController.newGameWithGoButton();
+                    } else if (isOrderShowing) {
+                        // Order confirmation is showing, hide it and start new game
+                        console.log('Order confirmation is showing, hiding it and starting new game');
+                        this.gameController.uiManager.hideAllOverlays();
+                        this.gameController.newGameWithGoButton();
+                    } else if (!this.gameController.gameActive) {
+                        // Check if the game is in 'end' status (game over)
+                        if (this.gameController.gameOver) {
+                            // Game is ended, show waiting overlay instead of starting
+                            console.log('Game is in end status, showing waiting overlay');
+                            this.gameController.uiManager.hideAllOverlays();
+                            this.gameController.uiManager.showWaitingForGameOverlay();
+                            console.log('Waiting overlay should now be visible');
+                        } else {
+                            // Game is just paused, resume normally
+                            this.gameController.resumeGame();
+                            console.log('Game started/resumed via game_status command');
+                        }
+                    } else {
+                        console.log('Game is already active');
+                    }
+                    break;
+
+                case 'pause':
+                    // Pause the game
+                    if (this.gameController.gameActive && !this.gameController.gameOver) {
+                        this.gameController.pauseGame();
+                        console.log('Game paused via game_status command');
+                    } else {
+                        console.log('Game is not active or already over, cannot pause');
+                    }
+                    break;
+
+                case 'end':
+                    // Check if order confirmation overlay is visible
+                    const orderOverlayElement = document.getElementById('orderConfirmationOverlay');
+                    const isOrderOverlayVisible = orderOverlayElement && orderOverlayElement.style.display !== 'none';
+                    
+                    console.log('End command received - Order overlay visible:', isOrderOverlayVisible);
+                    console.log('Current game state - gameActive:', this.gameController.gameActive, 'gameOver:', this.gameController.gameOver);
+                    
+                    // Only prevent processing if game is truly ended AND no order overlay is visible
+                    if (this.gameController.gameOver && !this.gameController.gameActive && !isOrderOverlayVisible) {
+                        console.log('Game already in final end state - ignoring duplicate end command');
+                        break;
+                    }
+                    
+                    // Update server status
+                    this.serverGameStatus = 'end';
+                    
+                    console.log('End command received - forcing consistent end game flow');
+                    console.log('Current game state - gameActive:', this.gameController.gameActive, 'gameOver:', this.gameController.gameOver);
+                    
+                    // Always force the game into ended state regardless of current state
+                    this.gameController.gameOver = true;
+                    this.gameController.gameActive = false;
+                    
+                    // Stop any ongoing game activities
+                    if (this.gameController.inputHandler) {
+                        this.gameController.inputHandler.stopContinuousMovement();
+                    }
+                    
+                    // Cancel any running game loop
+                    if (this.gameController.gameLoopId) {
+                        cancelAnimationFrame(this.gameController.gameLoopId);
+                        this.gameController.gameLoopId = null;
+                    }
+                    
+                    // If order overlay is visible, hide it first
+                    if (isOrderOverlayVisible) {
+                        console.log('Order overlay is visible, hiding it before ending game');
+                        this.gameController.uiManager.hideOrderConfirmation();
+                    }
+                    
+                    // Always trigger the admin control end game flow
+                    console.log('Triggering admin control end game flow');
+                    this.gameController._endGame("Game ended remotely via WebSocket command.", 'admin_control');
+                    break;
+
+                default:
+                    console.warn(`Unknown game status: ${status}`);
+                    this.sendMessage({ 
+                        type: 'response', 
+                        command: 'game_status', 
+                        status: 'error', 
+                        message: `Unknown game status: ${status}. Valid statuses are: start, pause, end` 
+                    });
+                    return;
+            }
+
+            // Send success response
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'game_status', 
+                status: 'success', 
+                message: `Game status set to: ${status}` 
+            });
+
+        } catch (error) {
+            console.error('Error handling game status command:', error);
+            this.sendMessage({ 
+                type: 'response', 
+                command: 'game_status', 
+                status: 'error', 
+                message: 'Failed to process game status command' 
+            });
+        }
+    }
+
+    // Set callback to be called when server allows game start
+    setGameStartCallback(callback) {
+        console.log('WebSocket: Game start callback set, waiting for server status and registration');
+        this.gameStartCallback = callback;
+        
+        // If we already received initial status AND registration is complete, handle it immediately
+        // But only if we're not a first-time user (welcome modal not shown yet)
+        if (this.initialStatusReceived && this.registrationComplete && !this.firstTimeUser) {
+            console.log(`WebSocket: Initial status already received after registration: ${this.serverGameStatus}`);
+            if (this.serverGameStatus === 'start') {
+                console.log('Server allows game start, starting game immediately');
+                callback();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'end') {
+                console.log('Server game is ended, showing waiting overlay immediately');
+                this.gameController.uiManager.hideAllOverlays();
+                this.gameController.uiManager.showWaitingForGameOverlay();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'pause') {
+                console.log('Server game is paused, starting then pausing immediately');
+                callback();
+                setTimeout(() => this.gameController.pauseGame(), 100);
+                this.gameStartCallback = null;
+            }
+        } else if (this.serverGameStatus && this.registrationComplete && !this.firstTimeUser) {
+            // We have server status and registration is complete, but haven't processed initial status yet
+            console.log(`WebSocket: Processing stored server status after registration: ${this.serverGameStatus}`);
+            this.initialStatusReceived = true;
+            
+            if (this.serverGameStatus === 'start') {
+                console.log('Server allows game start, starting game now');
+                callback();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'end') {
+                console.log('Server game is ended, showing waiting overlay now');
+                this.gameController.uiManager.hideAllOverlays();
+                this.gameController.uiManager.showWaitingForGameOverlay();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'pause') {
+                console.log('Server game is paused, starting then pausing now');
+                callback();
+                setTimeout(() => this.gameController.pauseGame(), 100);
+                this.gameStartCallback = null;
+            }
+        }
+        // If first-time user, the callback will be handled after welcome modal is closed
+    }
+
     handleShowInvoiceCommand() {
         try {
             // This command could trigger showing an invoice overlay or similar
@@ -336,67 +607,6 @@ export class WebSocketController {
         }
     }
 
-    handleInvoiceDataCommand(messageData) {
-        try {
-            console.log('Invoice data received:', messageData);
-            
-            // Extract invoice data from the message
-            let externalInvoice = null;
-            if (messageData.invoice) {
-                externalInvoice = messageData.invoice;
-            } else if (messageData.invoiceData) {
-                externalInvoice = messageData.invoiceData;
-            } else if (messageData.data) {
-                externalInvoice = messageData.data;
-            } else {
-                // If the entire messageData is the invoice
-                externalInvoice = messageData;
-            }
-            
-            if (!externalInvoice) {
-                console.error('No invoice data found in message');
-                this.sendMessage({ 
-                    type: 'response', 
-                    command: 'invoice_data', 
-                    status: 'error', 
-                    message: 'No invoice data found in message' 
-                });
-                return;
-            }
-            
-            // Transform external invoice format to internal format
-            const internalInvoice = this.transformExternalInvoice(externalInvoice);
-            
-            // End the game if it's currently active (similar to game over)
-            if (this.gameController.gameActive && !this.gameController.gameOver) {
-                this.gameController._endGame("Game ended due to remote invoice receipt");
-            }
-            
-            // Hide any existing overlays (like order confirmation)
-            this.gameController.uiManager.hideGameOverOverlay();
-            this.gameController.uiManager.hideOrderConfirmation();
-            
-            // Display the invoice as if order was placed
-            this.gameController.uiManager.showInvoice(internalInvoice);
-            
-            // Send success response
-            this.sendMessage({ 
-                type: 'response', 
-                command: 'invoice_data', 
-                status: 'success', 
-                message: 'Invoice displayed successfully' 
-            });
-            
-        } catch (error) {
-            console.error('Error processing invoice data command:', error);
-            this.sendMessage({ 
-                type: 'response', 
-                command: 'invoice_data', 
-                status: 'error', 
-                message: 'Failed to process invoice data: ' + error.message 
-            });
-        }
-    }
 
     handleInvoiceReadyCommand(messageData) {
         try {
@@ -424,6 +634,20 @@ export class WebSocketController {
                 return;
             }
             
+            // Check if we already have a pending invoice
+            const wasAlreadyProcessing = this.pendingInvoice !== null;
+            
+            // Clear any existing invoice data when new invoice is ready
+            // This ensures clicking the button will request the new invoice, not show cached old one
+            if (wasAlreadyProcessing) {
+                console.log('📋 SECONDARY INVOICE READY - Clearing old invoice data for new invoice:', invoiceNumber);
+                console.log('📋 Previous receivedInvoiceData state:', this.receivedInvoiceData ? 'EXISTS' : 'NULL');
+                this.receivedInvoiceData = null; // Clear the cached PDF data
+                console.log('📋 After clearing - receivedInvoiceData state:', this.receivedInvoiceData ? 'EXISTS' : 'NULL');
+            } else {
+                console.log('📋 FIRST INVOICE READY for invoice:', invoiceNumber);
+            }
+            
             // Store the pending invoice information
             this.pendingInvoice = {
                 invoiceNumber: invoiceNumber,
@@ -432,7 +656,12 @@ export class WebSocketController {
             
             console.log('Stored pending invoice:', this.pendingInvoice);
             
-            // Show the download invoice button
+            // If we were already processing an invoice, show modal dialog
+            if (wasAlreadyProcessing) {
+                this.showNewInvoiceModal(invoiceNumber);
+            }
+            
+            // Show/update the download invoice button
             this.showDownloadInvoiceButton(invoiceNumber);
             
             // Send success response
@@ -685,6 +914,168 @@ export class WebSocketController {
         }
     }
 
+    showNewInvoiceModal(invoiceNumber) {
+        // Remove any existing modal
+        this.hideNewInvoiceModal();
+
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'newInvoiceModal';
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2500;
+            font-family: 'Roboto', sans-serif;
+        `;
+
+        // Create modal box
+        const modalBox = document.createElement('div');
+        modalBox.style.cssText = `
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            position: relative;
+            animation: newInvoiceSlideIn 0.4s ease-out;
+        `;
+
+        // Create icon
+        const icon = document.createElement('div');
+        icon.innerHTML = '📋';
+        icon.style.cssText = `
+            font-size: 48px;
+            margin-bottom: 20px;
+        `;
+
+        // Create title
+        const title = document.createElement('h3');
+        title.textContent = 'New Invoice Issued!';
+        title.style.cssText = `
+            margin: 0 0 15px 0;
+            color: #28a745;
+            font-size: 22px;
+            font-weight: 600;
+        `;
+
+        // Create message
+        const messageDiv = document.createElement('p');
+        messageDiv.innerHTML = `A new invoice has been issued!<br><strong>Please check the new invoice carefully.</strong>`;
+        messageDiv.style.cssText = `
+            margin: 0 0 20px 0;
+            color: #555;
+            font-size: 16px;
+            line-height: 1.5;
+        `;
+
+        // Create invoice number display
+        const invoiceNumberDiv = document.createElement('div');
+        invoiceNumberDiv.textContent = `Invoice: ${invoiceNumber}`;
+        invoiceNumberDiv.style.cssText = `
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 0 0 25px 0;
+            font-family: monospace;
+            font-size: 14px;
+            color: #495057;
+            font-weight: 500;
+        `;
+
+        // Create OK button
+        const okButton = document.createElement('button');
+        okButton.textContent = 'OK';
+        okButton.style.cssText = `
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        `;
+
+        okButton.onmouseover = () => {
+            okButton.style.background = '#218838';
+        };
+
+        okButton.onmouseout = () => {
+            okButton.style.background = '#28a745';
+        };
+
+        // Add event listeners
+        const closeModal = () => {
+            this.hideNewInvoiceModal();
+        };
+
+        okButton.onclick = closeModal;
+
+        // Close on overlay click
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) {
+                closeModal();
+            }
+        };
+
+        // Close on Escape key
+        const handleKeyPress = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleKeyPress);
+            }
+        };
+        document.addEventListener('keydown', handleKeyPress);
+
+        // Assemble modal
+        modalBox.appendChild(icon);
+        modalBox.appendChild(title);
+        modalBox.appendChild(messageDiv);
+        modalBox.appendChild(invoiceNumberDiv);
+        modalBox.appendChild(okButton);
+        modalOverlay.appendChild(modalBox);
+
+        // Add to page
+        document.body.appendChild(modalOverlay);
+
+        // Add CSS animation keyframes if not already added
+        if (!document.querySelector('#newInvoiceModalStyles')) {
+            const style = document.createElement('style');
+            style.id = 'newInvoiceModalStyles';
+            style.textContent = `
+                @keyframes newInvoiceSlideIn {
+                    from {
+                        transform: translateY(-50px) scale(0.9);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateY(0) scale(1);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    hideNewInvoiceModal() {
+        const existingModal = document.getElementById('newInvoiceModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+    }
+
     showDownloadInvoiceButton(invoiceNumber) {
         try {
             console.log('Showing download invoice button for invoice:', invoiceNumber);
@@ -727,10 +1118,14 @@ export class WebSocketController {
                 max-width: 300px;
                 cursor: pointer;
                 transition: all 0.3s ease;
+                -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+                touch-action: manipulation;
+                user-select: none;
+                -webkit-user-select: none;
             `;
             
             downloadButton.innerHTML = `
-                <span>Your invoice is ready - View Invoice</span>
+                <span>${invoiceNumber} is ready - View Invoice</span>
             `;
             
             // Add pulsing animation with green theme
@@ -770,18 +1165,46 @@ export class WebSocketController {
                 document.head.appendChild(style);
             }
             
-            // Add click handler to request/view invoice
-            downloadButton.onclick = () => {
+            // Add mobile-friendly event handlers for the invoice button
+            const handleInvoiceButtonClick = (eventType) => {
+                console.log(`📱 Invoice button ${eventType} for invoice:`, invoiceNumber);
+                console.log('Current receivedInvoiceData state:', this.receivedInvoiceData ? 'EXISTS' : 'NULL');
+                console.log('Current pendingInvoice state:', this.pendingInvoice);
+                
+                // Visual feedback for mobile
+                downloadButton.style.backgroundColor = '#cc0000';
+                setTimeout(() => {
+                    downloadButton.style.backgroundColor = '';
+                }, 200);
+                
                 // If we already have the invoice data, show it directly
                 if (this.receivedInvoiceData) {
                     console.log('Reshowing stored invoice data');
                     this.showPdfOverlay(this.receivedInvoiceData);
                 } else {
-                    // First time - request the invoice from server
-                    console.log('Requesting invoice for first time');
+                    // First time or cleared - request the invoice from server
+                    console.log('Requesting invoice from server for invoice:', invoiceNumber);
                     this.requestInvoice(invoiceNumber);
                 }
             };
+            
+            // Add multiple event listeners for better mobile compatibility
+            downloadButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleInvoiceButtonClick('clicked');
+            });
+            
+            downloadButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleInvoiceButtonClick('touched');
+            });
+            
+            downloadButton.addEventListener('touchstart', (e) => {
+                console.log('📱 Invoice button touchstart');
+                downloadButton.style.backgroundColor = '#ff6666';
+            });
             
             // Find order confirmation box and append the download button
             const orderBox = orderConfirmationOverlay.querySelector('.order-confirmation-box');
@@ -818,10 +1241,11 @@ export class WebSocketController {
         this.pendingInvoice = null;
         this.receivedInvoiceData = null;
         
-        // Also remove any existing download invoice button
+        // Also remove any existing download invoice button and modals
         this.hideDownloadInvoiceButton();
+        this.hideNewInvoiceModal();
         
-        console.log('Invoice data and button cleared');
+        console.log('Invoice data, button, and modals cleared');
     }
 
     removeWaitingMessages() {
@@ -838,7 +1262,8 @@ export class WebSocketController {
 
     requestInvoice(invoiceNumber) {
         try {
-            console.log('Requesting invoice:', invoiceNumber);
+            console.log('🚀 requestInvoice() called with invoice number:', invoiceNumber);
+            console.log('🚀 WebSocket connection state:', this.websocket ? this.websocket.readyState : 'NO_WEBSOCKET');
             
             // Send request_invoice message to WebSocket server
             const requestMessage = {
@@ -847,12 +1272,13 @@ export class WebSocketController {
                 timestamp: new Date().toISOString()
             };
             
+            console.log('🚀 About to send message:', requestMessage);
             this.sendMessage(requestMessage);
             
-            console.log('Invoice request sent:', requestMessage);
+            console.log('🚀 Invoice request sent successfully:', requestMessage);
             
-            // Clear the pending invoice since we've requested it
-            this.pendingInvoice = null;
+            // Don't clear pendingInvoice here - keep it to detect future invoice_ready events
+            // this.pendingInvoice = null;
             
             // Note: Don't hide the download button here - it will show "Requested" state
             // and persist until the order confirmation is closed
@@ -862,37 +1288,6 @@ export class WebSocketController {
         }
     }
 
-    transformExternalInvoice(externalInvoice) {
-        try {
-            // Transform external format to internal format expected by UI
-            const internalInvoice = {
-                invoiceNumber: externalInvoice.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`,
-                invoiceDate: this.formatInvoiceDate(externalInvoice.invoiceDate),
-                customer: {
-                    name: externalInvoice.username || externalInvoice.userId || 'Unknown Customer',
-                    email: externalInvoice.email || `${externalInvoice.userId}@example.com`,
-                    playerId: externalInvoice.userId || 'unknown-player'
-                },
-                items: this.transformInvoiceItems(externalInvoice.itemArray || []),
-                totals: {
-                    subtotal: externalInvoice.subtotal || 0,
-                    tax: externalInvoice.vatTotal || 0,
-                    taxRate: externalInvoice.vatTotal > 0 && externalInvoice.subtotal > 0 ? 
-                             (externalInvoice.vatTotal / externalInvoice.subtotal) : 0.20,
-                    total: externalInvoice.total || (externalInvoice.subtotal + externalInvoice.vatTotal),
-                    currency: externalInvoice.currency || 'GBP'
-                },
-                paymentStatus: externalInvoice.paymentStatus || 'PAID',
-                orderStatus: externalInvoice.orderStatus || 'CONFIRMED',
-                processedAt: externalInvoice.processedAt || new Date().toISOString()
-            };
-
-            return internalInvoice;
-        } catch (error) {
-            console.error('Error transforming external invoice:', error);
-            throw new Error('Failed to transform invoice format: ' + error.message);
-        }
-    }
 
     transformInvoiceItems(itemArray) {
         return itemArray.map(item => ({
@@ -970,6 +1365,49 @@ export class WebSocketController {
         }
     }
 
+    // Mark registration as complete
+    setRegistrationComplete() {
+        console.log('WebSocket: Registration marked as complete');
+        this.registrationComplete = true;
+        
+        // Show welcome modal for first-time users
+        if (this.firstTimeUser) {
+            console.log('WebSocket: First-time user, showing welcome modal');
+            this.gameController.uiManager.showWelcomeModal(() => {
+                console.log('WebSocket: Welcome modal closed, proceeding with game start');
+                this.firstTimeUser = false;
+                this._proceedWithGameStart();
+            });
+        } else {
+            this._proceedWithGameStart();
+        }
+    }
+
+    // Proceed with game start after welcome modal (if shown)
+    _proceedWithGameStart() {
+        // If we have a pending game start callback and server status, process it now
+        if (this.gameStartCallback && this.serverGameStatus && !this.initialStatusReceived) {
+            console.log(`WebSocket: Processing stored server status after registration completion: ${this.serverGameStatus}`);
+            this.initialStatusReceived = true;
+            
+            if (this.serverGameStatus === 'start') {
+                console.log('Server allows game start, starting game after registration');
+                this.gameStartCallback();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'end') {
+                console.log('Server game is ended, showing waiting overlay after registration');
+                this.gameController.uiManager.hideAllOverlays();
+                this.gameController.uiManager.showWaitingForGameOverlay();
+                this.gameStartCallback = null;
+            } else if (this.serverGameStatus === 'pause') {
+                console.log('Server game is paused, starting then pausing after registration');
+                this.gameStartCallback();
+                setTimeout(() => this.gameController.pauseGame(), 100);
+                this.gameStartCallback = null;
+            }
+        }
+    }
+
     // Send player registration event to WebSocket
     sendRegistrationEvent(playerData) {
         if (!this.isConnected) {
@@ -978,10 +1416,17 @@ export class WebSocketController {
         }
 
         try {
+            // Store player data for reconnection use
+            this.storedPlayerData = {
+                playerId: playerData.playerId,
+                email: playerData.email,
+                username: playerData.username
+            };
+
             const registrationData = {
                 type: 'register',
                 timestamp: new Date().toISOString(),
-                userId: playerData.playerId,
+                playerId: playerData.playerId,
                 player: {
                     playerId: playerData.playerId,
                     email: playerData.email,
@@ -992,6 +1437,9 @@ export class WebSocketController {
 
             console.log('Sending player registration event:', registrationData);
             this.sendMessage(registrationData);
+            
+            // Mark registration as complete
+            this.setRegistrationComplete();
 
         } catch (error) {
             console.error('Error sending registration event:', error);
@@ -1000,7 +1448,9 @@ export class WebSocketController {
 
     // Send game event data to WebSocket
     sendGameEventData(eventType, playerData, gameState) {
+        console.log(`sendGameEventData called with eventType: ${eventType}, isConnected: ${this.isConnected}`);
         if (!this.isConnected) {
+            console.warn(`sendGameEventData: WebSocket not connected, cannot send ${eventType} event`);
             return;
         }
 
@@ -1065,7 +1515,32 @@ export class WebSocketController {
         }
     }
 
+    startHeartbeat() {
+        this.stopHeartbeat(); // Clear any existing heartbeat
+        this.heartbeatInterval = setInterval(() => {
+            if (this.websocket && this.isConnected && this.websocket.readyState === WebSocket.OPEN) {
+                try {
+                    this.sendMessage({ 
+                        type: 'ping', 
+                        timestamp: new Date().toISOString() 
+                    });
+                    console.log('WebSocket heartbeat ping sent');
+                } catch (error) {
+                    console.error('Failed to send heartbeat ping:', error);
+                }
+            }
+        }, this.heartbeatDelay);
+    }
+
+    stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+        }
+    }
+
     disconnect() {
+        this.stopHeartbeat();
         if (this.websocket) {
             this.websocket.close();
             this.websocket = null;

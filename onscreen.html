@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnScreen - Game Client Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 1.1em;
+            min-width: 100px;
+            color: #333;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #f8f9fa;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        input[type="text"]:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .connect-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .connect-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .disconnect-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .disconnect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        }
+
+        .disconnect-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .get-order-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            margin: 30px 0 30px auto;
+            display: block;
+            max-width: 200px;
+        }
+
+        .get-order-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .get-order-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            border: 2px solid #10b981;
+            color: #10b981;
+        }
+
+        .status.disconnected {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+            color: #dc3545;
+        }
+
+        .status.connecting {
+            background: rgba(59, 130, 246, 0.2);
+            border: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .log-entry.info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .log-entry.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+        }
+
+        .log-entry.error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #fca5a5;
+        }
+
+        /* Collapsible Frame Styles */
+        .collapsible-frame {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            margin: 60px 0 20px 0;
+            overflow: hidden;
+        }
+
+        .collapsible-header {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .collapsible-header:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .collapsible-title {
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        .collapsible-toggle {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .collapsible-content.expanded {
+            display: block;
+        }
+
+        .collapsible-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* Title Styles */
+        .page-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .connect-logo {
+            max-width: 300px;
+            height: auto;
+        }
+
+        /* Order Confirmation Overlay Styles - Matching Main Game */
+        .order-confirmation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            color: #333;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            z-index: 1500;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .order-confirmation-box {
+            width: 90%;
+            max-width: 500px;
+            height: auto;
+            max-height: 80%;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+            line-height: 1.5;
+            box-sizing: border-box;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+            
+            /* Scrollbar styling for order confirmation */
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f1f1f1;
+        }
+
+        .order-confirmation-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .order-confirmation-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .order-confirmation-box::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .order-confirmation-box::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .order-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dc3545;
+        }
+
+        .order-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.8em;
+            color: #dc3545;
+        }
+
+        .order-header p {
+            margin: 0;
+            color: #666;
+            font-size: 1em;
+        }
+
+        .order-section {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .order-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            color: #555;
+            text-align: center;
+        }
+
+        .order-items-list {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        .order-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-item-quantity {
+            font-size: 12px;
+            background: rgba(59, 130, 246, 0.2);
+            color: #1e40af;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: bold;
+        }
+
+        .order-item-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .order-item-info img {
+            height: 24px;
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .order-item-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .order-item-price {
+            font-weight: bold;
+            color: #dc3545;
+            margin-left: 10px;
+        }
+
+        .order-summary {
+            text-align: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+
+        .order-total {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        .order-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .order-button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            user-select: none;
+        }
+
+        .cancel-button {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .cancel-button:hover {
+            background-color: #5a6268;
+        }
+
+        .place-order-button {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .place-order-button:hover {
+            background-color: #c82333;
+        }
+
+        .place-order-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .player-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .close-overlay {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #666;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .close-overlay:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .order-confirmation-box {
+                padding: 20px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Page Title -->
+        <div class="page-title">
+            <img src="assets/connect.png" alt="Connect Logo" class="connect-logo">
+        </div>
+
+        <!-- Player ID Input and Get Order Button (Always Visible) -->
+        <div class="input-group">
+            <label for="playerId">Player ID:</label>
+            <input type="text" id="playerId" placeholder="Enter player ID to get order" disabled>
+        </div>
+
+        <button id="getOrderBtn" class="get-order-btn" disabled>Get Order</button>
+
+        <!-- Collapsible WebSocket Connection Frame -->
+        <div class="collapsible-frame">
+            <div class="collapsible-header" onclick="toggleCollapsible('connectionFrame')">
+                <span class="collapsible-title">Connect</span>
+                <span class="collapsible-toggle" id="connectionToggle">▼</span>
+            </div>
+            <div class="collapsible-content" id="connectionFrame">
+                <div class="input-group">
+                    <label for="websocketUrl">WebSocket Server URL:</label>
+                    <input type="text" id="websocketUrl" placeholder="wss://your-websocket-server.com/game-control" value="wss://redhat-quest-websocket-route-demo-frontend.apps.cluster-h7sqb.h7sqb.sandbox182.opentlc.com/game-control">
+                </div>
+
+                <div class="button-group">
+                    <button id="connectBtn" class="connect-btn">Connect</button>
+                    <button id="disconnectBtn" class="disconnect-btn" disabled>Disconnect</button>
+                </div>
+
+                <div id="status" class="status disconnected">Disconnected</div>
+
+                <div id="log" class="log">
+                    <div class="log-entry info">Ready to connect...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Confirmation Overlay -->
+    <div id="orderConfirmationOverlay" class="order-confirmation-overlay">
+        <div class="order-confirmation-box">
+            <button class="close-overlay" onclick="hideOrderConfirmation()">×</button>
+            <div class="order-header">
+                <h1>Order Confirmation</h1>
+            </div>
+            <div class="order-section">
+                <div id="orderItemsList" class="order-items-list"></div>
+            </div>
+            <div class="order-summary">
+                <div id="orderTotal" class="order-total">Total: £0.00</div>
+            </div>
+            <div class="order-actions">
+                <button class="order-button cancel-button" id="showInvoiceBtn" onclick="requestInvoice()">Show Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class OnScreenClient {
+            constructor() {
+                this.websocket = null;
+                this.isConnected = false;
+                this.currentOrderData = null;
+                this.receivedInvoiceData = null;
+                this.pendingInvoice = null;
+                this.invoiceRequestedByButton = false;
+                
+                // Reconnection properties
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.reconnectDelay = 3000; // 3 seconds
+                this.isManualDisconnect = false;
+                this.reconnectInterval = null;
+                
+                this.initializeElements();
+                this.setupEventListeners();
+            }
+
+
+
+            initializeElements() {
+                this.websocketUrlInput = document.getElementById('websocketUrl');
+                this.playerIdInput = document.getElementById('playerId');
+                this.connectBtn = document.getElementById('connectBtn');
+                this.disconnectBtn = document.getElementById('disconnectBtn');
+                this.getOrderBtn = document.getElementById('getOrderBtn');
+                this.status = document.getElementById('status');
+                this.log = document.getElementById('log');
+                this.orderOverlay = document.getElementById('orderConfirmationOverlay');
+                this.orderItemsList = document.getElementById('orderItemsList');
+                this.orderTotal = document.getElementById('orderTotal');
+            }
+
+            setupEventListeners() {
+                this.connectBtn.addEventListener('click', () => this.connect());
+                this.disconnectBtn.addEventListener('click', () => this.disconnect());
+                this.getOrderBtn.addEventListener('click', () => this.getOrder());
+                
+                this.playerIdInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && this.isConnected) {
+                        this.getOrder();
+                    }
+                });
+            }
+
+            connect() {
+                const url = this.websocketUrlInput.value.trim();
+                if (!url) {
+                    this.logMessage('error', 'Please enter a WebSocket URL');
+                    return;
+                }
+
+                // Store the URL for reconnection attempts
+                this.websocketUrl = url;
+                
+                this.updateStatus('connecting', 'Connecting...');
+                this.logMessage('info', `Connecting to: ${url}`);
+
+                try {
+                    this.websocket = new WebSocket(url);
+                    
+                    this.websocket.onopen = (event) => {
+                        this.isConnected = true;
+                        this.reconnectAttempts = 0; // Reset reconnection attempts
+                        this.isManualDisconnect = false; // Reset manual disconnect flag
+                        this.updateStatus('connected', 'Connected');
+                        this.logMessage('success', 'WebSocket connected successfully');
+                        this.updateButtonStates();
+                        
+                        // Clear any existing reconnection interval
+                        if (this.reconnectInterval) {
+                            clearTimeout(this.reconnectInterval);
+                            this.reconnectInterval = null;
+                        }
+                        
+                        // Send admin_register event
+                        this.sendAdminRegister();
+                    };
+
+                    this.websocket.onmessage = (event) => {
+                        this.handleMessage(event);
+                    };
+
+                    this.websocket.onclose = (event) => {
+                        this.isConnected = false;
+                        this.updateStatus('disconnected', 'Disconnected');
+                        this.logMessage('info', `WebSocket closed (Code: ${event.code})`);
+                        this.updateButtonStates();
+                        
+                        // Only attempt reconnection if it wasn't a manual disconnect
+                        if (!this.isManualDisconnect) {
+                            this.handleReconnection();
+                        }
+                    };
+
+                    this.websocket.onerror = (error) => {
+                        this.logMessage('error', 'WebSocket connection error');
+                        console.error('WebSocket error:', error);
+                        
+                        // On error, also try to reconnect (unless manual disconnect)
+                        if (!this.isManualDisconnect) {
+                            this.handleReconnection();
+                        }
+                    };
+
+                } catch (error) {
+                    this.logMessage('error', `Failed to create WebSocket: ${error.message}`);
+                    this.updateStatus('disconnected', 'Connection Failed');
+                    
+                    // If not manual disconnect, attempt reconnection
+                    if (!this.isManualDisconnect && this.websocketUrl) {
+                        this.handleReconnection();
+                    }
+                }
+            }
+
+            disconnect() {
+                // Mark as manual disconnect to prevent auto-reconnection
+                this.isManualDisconnect = true;
+                
+                // Clear any pending reconnection
+                if (this.reconnectInterval) {
+                    clearTimeout(this.reconnectInterval);
+                    this.reconnectInterval = null;
+                }
+                
+                if (this.websocket) {
+                    this.websocket.close();
+                    this.websocket = null;
+                }
+                this.isConnected = false;
+                this.updateStatus('disconnected', 'Disconnected');
+                this.logMessage('info', 'WebSocket disconnected manually');
+                this.updateButtonStates();
+            }
+
+            sendAdminRegister() {
+                if (!this.isConnected) {
+                    this.logMessage('error', 'Not connected to WebSocket server');
+                    return;
+                }
+
+                const message = {
+                    type: 'admin_register',
+                    timestamp: new Date().toISOString()
+                };
+
+                this.websocket.send(JSON.stringify(message));
+                this.logMessage('info', 'Sent admin_register event');
+            }
+
+            getOrder() {
+                const playerId = this.playerIdInput.value.trim();
+                if (!playerId) {
+                    this.logMessage('error', 'Please enter a player ID');
+                    return;
+                }
+
+                if (!this.isConnected) {
+                    this.logMessage('error', 'Not connected to WebSocket server');
+                    return;
+                }
+
+                const message = {
+                    type: 'admin_getOrder',
+                    playerId: playerId,
+                    timestamp: new Date().toISOString()
+                };
+
+                this.websocket.send(JSON.stringify(message));
+                this.logMessage('info', `Requesting order for player: ${playerId}`);
+            }
+
+            handleMessage(event) {
+                try {
+                    console.log('>>>>>>Received message:', event.data);
+                    const message = JSON.parse(event.data);
+                    this.logMessage('info', `Received: ${message.type}`);
+                    if (message.type === 'admin_getOrder_response') {
+                        console.log('Received order data:', message);
+                        this.displayOrder(message);
+                    } else if (message.type === 'request_invoice_response') {
+                        console.log('Received invoice response:', message);
+                        this.handleInvoiceResponse(message);
+                    } else if (message.type === 'invoice_pdf') {
+                        console.log('Received invoice PDF:', message);
+                        this.handleInvoiceCommand(message);
+                    } else if (message.type === 'invoice_ready') {
+                        console.log('Received invoice ready:', message);
+                        this.handleInvoiceReady(message);
+                    }
+                } catch (error) {
+                    this.logMessage('error', `Failed to parse message: ${error.message}`);
+                }
+            }
+
+            displayOrder(orderData) {
+                console.log('Full order data:', orderData);
+                
+                // Store the order data for invoice requests
+                this.currentOrderData = orderData;
+                
+                // Extract the order data from the nested structure
+                const actualOrderData = orderData.order?.data;
+                
+                if (!actualOrderData || !actualOrderData.items) {
+                    this.logMessage('error', 'Invalid order data received');
+                    console.log('Invalid data structure:', actualOrderData);
+                    return;
+                }
+
+                this.logMessage('success', 'Order data received, displaying overlay');
+
+                // Clear previous order items
+                this.orderItemsList.innerHTML = '';
+
+                // Add player information
+                const playerInfo = document.createElement('div');
+                playerInfo.className = 'player-info';
+                playerInfo.innerHTML = `
+                    <div><strong>Customer Name:</strong> ${actualOrderData.customerName || 'Unknown'}</div>
+                `;
+                this.orderItemsList.appendChild(playerInfo);
+
+                // Add order items
+                let totalCost = 0;
+                actualOrderData.items.forEach(item => {
+                    const orderItem = document.createElement('div');
+                    orderItem.className = 'order-item';
+                    
+                    const itemTotal = (item.unitPrice || 0) * (item.quantity || 1);
+                    totalCost += itemTotal;
+
+                    // Map item description to image
+                    const getImageForItem = (description) => {
+                        const desc = description.toLowerCase();
+                        if (desc.includes('ansible')) return 'assets/t_shirt_ansible.png';
+                        if (desc.includes('openshift')) return 'assets/t_shirt_openshift.png';
+                        if (desc.includes('rhel')) return 'assets/t_shirt_rhel.png';
+                        return 'assets/t_shirt_ansible.png'; // Default fallback
+                    };
+
+                    orderItem.innerHTML = `
+                        <div class="order-item-info">
+                            <img src="${getImageForItem(item.description)}" alt="${item.description}">
+                            <div class="order-item-name">${item.description}</div>
+                            <div class="order-item-quantity">Qty: ${item.quantity || 1}</div>
+                        </div>
+                        <span class="order-item-price">£${itemTotal.toFixed(2)}</span>
+                    `;
+                    this.orderItemsList.appendChild(orderItem);
+                });
+
+                // Update total
+                this.orderTotal.textContent = `Total: £${totalCost.toFixed(2)}`;
+
+                // Show overlay
+                this.orderOverlay.style.display = 'flex';
+            }
+
+            updateStatus(type, message) {
+                this.status.className = `status ${type}`;
+                this.status.textContent = message;
+            }
+
+            requestInvoice() {
+                if (!this.currentOrderData || !this.currentOrderData.order?.invoiceNumber) {
+                    this.logMessage('error', 'No order data available for invoice request');
+                    return;
+                }
+
+                if (!this.isConnected) {
+                    this.logMessage('error', 'Not connected to WebSocket server');
+                    return;
+                }
+
+                const invoiceNumber = this.currentOrderData.order.invoiceNumber;
+                
+                // Mark that this invoice was requested via the button
+                this.invoiceRequestedByButton = true;
+                
+                // Store the pending invoice information
+                this.pendingInvoice = {
+                    invoiceNumber: invoiceNumber,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const message = {
+                    type: 'request_invoice',
+                    invoiceNumber: invoiceNumber,
+                    timestamp: new Date().toISOString()
+                };
+
+                this.websocket.send(JSON.stringify(message));
+                this.logMessage('info', `Requesting invoice for invoice number: ${invoiceNumber}`);
+            }
+
+            handleInvoiceCommand(messageData) {
+                try {
+                    console.log('Invoice PDF received:', messageData);
+                    
+                    // Check if we already have a pending invoice
+                    const wasAlreadyProcessing = this.pendingInvoice !== null;
+                    
+                    // Validate message data structure
+                    if (!messageData || typeof messageData !== 'object') {
+                        throw new Error('Invalid message data format');
+                    }
+                    
+                    // Extract invoice PDF data from the message
+                    const invoiceData = messageData.data || messageData;
+                    
+                    if (!invoiceData.type || invoiceData.type !== 'invoice_pdf') {
+                        throw new Error('Expected invoice_pdf type');
+                    }
+                    
+                    if (!invoiceData.base64Data) {
+                        throw new Error('Missing base64Data field');
+                    }
+                    
+                    if (!invoiceData.filename) {
+                        throw new Error('Missing filename field');
+                    }
+                    
+                    if (!invoiceData.mimeType || invoiceData.mimeType !== 'application/pdf') {
+                        throw new Error('Expected application/pdf mimeType');
+                    }
+                    
+                    // If we were already processing an invoice, clear old data
+                    if (wasAlreadyProcessing) {
+                        console.log('📋 SECONDARY INVOICE PDF - Clearing old invoice data for new invoice');
+                        this.receivedInvoiceData = null; // Clear the cached PDF data
+                        
+                        // Only show modal if this invoice was NOT requested via the button
+                        if (!this.invoiceRequestedByButton) {
+                            this.showNewInvoiceModal(invoiceData.filename);
+                        } else {
+                            console.log('📋 Invoice was requested via button - no modal needed');
+                        }
+                    } else {
+                        console.log('📋 FIRST INVOICE PDF received');
+                    }
+                    
+                    // Reset the button flag after processing the invoice
+                    this.invoiceRequestedByButton = false;
+                    
+                    // Store the invoice data for future viewing
+                    this.receivedInvoiceData = invoiceData;
+                    
+                    // Display the PDF overlay
+                    this.showPdfOverlay(invoiceData);
+                    
+                    this.logMessage('success', 'Invoice PDF displayed successfully');
+                    
+                } catch (error) {
+                    console.error('Error processing invoice command:', error);
+                    this.logMessage('error', `Failed to process invoice PDF: ${error.message}`);
+                }
+            }
+
+            handleInvoiceResponse(message) {
+                try {
+                    console.log('Processing invoice response:', message);
+                    
+                    // Extract invoice PDF data from the message
+                    const invoiceData = message.data || message;
+                    
+                    if (!invoiceData.type || invoiceData.type !== 'invoice_pdf') {
+                        throw new Error('Expected invoice_pdf type');
+                    }
+                    
+                    if (!invoiceData.base64Data) {
+                        throw new Error('Missing base64Data field');
+                    }
+                    
+                    if (!invoiceData.filename) {
+                        throw new Error('Missing filename field');
+                    }
+                    
+                    if (!invoiceData.mimeType || invoiceData.mimeType !== 'application/pdf') {
+                        throw new Error('Expected application/pdf mimeType');
+                    }
+                    
+                    // Store the invoice data for future viewing
+                    this.receivedInvoiceData = invoiceData;
+                    
+                    // Display the PDF overlay
+                    this.showPdfOverlay(invoiceData);
+                    
+                    this.logMessage('success', 'Invoice PDF displayed successfully');
+                    
+                } catch (error) {
+                    console.error('Error processing invoice response:', error);
+                    this.logMessage('error', `Failed to process invoice PDF: ${error.message}`);
+                }
+            }
+
+            showPdfOverlay(invoiceData) {
+                try {
+                    // Validate and debug base64 data
+                    console.log("Raw invoice data received:", {
+                        type: invoiceData.type,
+                        filename: invoiceData.filename,
+                        mimeType: invoiceData.mimeType,
+                        base64DataType: typeof invoiceData.base64Data,
+                        base64Length: invoiceData.base64Data ? invoiceData.base64Data.length : 0
+                    });
+
+                    // Clean up base64 data (remove any whitespace/newlines)
+                    let cleanBase64 = invoiceData.base64Data.replace(/\s/g, '');
+                    console.log("Cleaned base64 length:", cleanBase64.length);
+
+                    // Validate base64 format
+                    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+                    const isValidBase64 = base64Regex.test(cleanBase64);
+                    console.log("Is valid base64 format:", isValidBase64);
+
+                    // Try to decode base64 to check if it's valid
+                    let decodedBytes = null;
+                    try {
+                        const binaryString = atob(cleanBase64);
+                        decodedBytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            decodedBytes[i] = binaryString.charCodeAt(i);
+                        }
+                        console.log("Base64 decoded successfully. Decoded length:", decodedBytes.length);
+                        
+                        // Check PDF signature (should start with %PDF)
+                        const pdfSignature = String.fromCharCode(...decodedBytes.slice(0, 4));
+                        console.log("PDF signature (first 4 bytes):", pdfSignature);
+                        console.log("Is valid PDF signature:", pdfSignature === '%PDF');
+                        
+                    } catch (decodeError) {
+                        console.error("Base64 decode error:", decodeError);
+                        throw new Error("Invalid base64 data: " + decodeError.message);
+                    }
+
+                    // Create PDF data URL from cleaned base64
+                    const pdfDataUrl = `data:${invoiceData.mimeType};base64,${cleanBase64}`;
+                    console.log("PDF Data URL created successfully. Total length:", pdfDataUrl.length);
+
+                    // Also create a Blob URL as alternative (sometimes works better for large files)
+                    let pdfBlobUrl = null;
+                    try {
+                        const byteCharacters = atob(cleanBase64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: invoiceData.mimeType });
+                        pdfBlobUrl = URL.createObjectURL(blob);
+                        console.log("PDF Blob URL created successfully:", pdfBlobUrl);
+                    } catch (blobError) {
+                        console.error("Failed to create Blob URL:", blobError);
+                    }
+                    
+                    // Create overlay container
+                    const overlay = document.createElement('div');
+                    overlay.id = 'pdf-invoice-overlay';
+                    overlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100vw;
+                        height: 100vh;
+                        background-color: rgba(0, 0, 0, 0.9);
+                        z-index: 10000;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        font-family: Arial, sans-serif;
+                    `;
+                    
+                    // Create header with filename and close button
+                    const header = document.createElement('div');
+                    header.style.cssText = `
+                        width: 90%;
+                        max-width: 800px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 10px;
+                        color: white;
+                    `;
+                    
+                    const title = document.createElement('h3');
+                    title.textContent = invoiceData.filename;
+                    title.style.cssText = `
+                        margin: 0;
+                        color: white;
+                        font-size: 18px;
+                    `;
+                    
+                    const closeButton = document.createElement('button');
+                    closeButton.textContent = '✕ Close';
+                    closeButton.style.cssText = `
+                        background-color: #dc3545;
+                        color: white;
+                        border: none;
+                        padding: 8px 16px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 14px;
+                    `;
+                    closeButton.onclick = () => this.hidePdfOverlay();
+                    
+                    header.appendChild(title);
+                    header.appendChild(closeButton);
+                    
+                    // Create PDF container with multiple display options
+                    const pdfContainer = document.createElement('div');
+                    pdfContainer.style.cssText = `
+                        width: 90%;
+                        height: 80%;
+                        max-width: 800px;
+                        border: 2px solid #ccc;
+                        border-radius: 4px;
+                        background-color: white;
+                        position: relative;
+                    `;
+                    
+                    // Simple PDF display approach
+                    console.log('Displaying PDF with simple iframe');
+                    
+                    // Create simple iframe for PDF display
+                    const pdfIframe = document.createElement('iframe');
+                    pdfIframe.src = pdfBlobUrl || pdfDataUrl;
+                    pdfIframe.style.cssText = `
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                        border-radius: 4px;
+                    `;
+                
+                    // Add iframe to container
+                    pdfContainer.appendChild(pdfIframe);
+                    
+                    overlay.appendChild(header);
+                    overlay.appendChild(pdfContainer);
+                    
+                    // Add to document
+                    document.body.appendChild(overlay);
+                    
+                    console.log('PDF overlay displayed successfully');
+                    
+                } catch (error) {
+                    console.error('Error creating PDF overlay:', error);
+                    this.logMessage('error', 'Failed to create PDF overlay: ' + error.message);
+                }
+            }
+
+            hidePdfOverlay() {
+                const overlay = document.getElementById('pdf-invoice-overlay');
+                if (overlay) {
+                    overlay.remove();
+                    console.log('PDF overlay closed');
+                }
+            }
+
+            showNewInvoiceModal(filename) {
+                // Remove any existing modal
+                this.hideNewInvoiceModal();
+
+                // Create modal overlay
+                const modalOverlay = document.createElement('div');
+                modalOverlay.id = 'newInvoiceModal';
+                modalOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 2500;
+                    font-family: 'Roboto', sans-serif;
+                `;
+
+                // Create modal box
+                const modalBox = document.createElement('div');
+                modalBox.style.cssText = `
+                    background: #fff;
+                    border-radius: 12px;
+                    padding: 30px;
+                    max-width: 450px;
+                    width: 90%;
+                    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+                    text-align: center;
+                    position: relative;
+                    animation: newInvoiceSlideIn 0.4s ease-out;
+                `;
+
+                // Create icon
+                const icon = document.createElement('div');
+                icon.innerHTML = '📋';
+                icon.style.cssText = `
+                    font-size: 48px;
+                    margin-bottom: 20px;
+                `;
+
+                // Create title
+                const title = document.createElement('h3');
+                title.textContent = 'New Invoice Issued!';
+                title.style.cssText = `
+                    margin: 0 0 15px 0;
+                    color: #28a745;
+                    font-size: 22px;
+                    font-weight: 600;
+                    font-family: 'Arial', sans-serif;
+                `;
+
+                // Create message
+                const messageDiv = document.createElement('p');
+                messageDiv.innerHTML = `A new invoice has been issued!<br><strong>Please check the new invoice carefully.</strong>`;
+                messageDiv.style.cssText = `
+                    margin: 0 0 20px 0;
+                    color: #555;
+                    font-size: 16px;
+                    line-height: 1.5;
+                `;
+
+                // Create invoice filename display
+                const invoiceFilenameDiv = document.createElement('div');
+                invoiceFilenameDiv.textContent = `File: ${filename}`;
+                invoiceFilenameDiv.style.cssText = `
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 6px;
+                    padding: 12px;
+                    margin: 0 0 25px 0;
+                    font-family: monospace;
+                    font-size: 14px;
+                    color: #495057;
+                    font-weight: 500;
+                `;
+
+                // Create OK button
+                const okButton = document.createElement('button');
+                okButton.textContent = 'OK';
+                okButton.style.cssText = `
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 12px 35px;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s ease;
+                `;
+
+                okButton.onmouseover = () => {
+                    okButton.style.background = '#218838';
+                };
+
+                okButton.onmouseout = () => {
+                    okButton.style.background = '#28a745';
+                };
+
+                // Add event listeners
+                const closeModal = () => {
+                    this.hideNewInvoiceModal();
+                };
+
+                okButton.onclick = closeModal;
+
+                // Close on overlay click
+                modalOverlay.onclick = (e) => {
+                    if (e.target === modalOverlay) {
+                        closeModal();
+                    }
+                };
+
+                // Close on Escape key
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        closeModal();
+                        document.removeEventListener('keydown', handleKeyPress);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                // Assemble modal
+                modalBox.appendChild(icon);
+                modalBox.appendChild(title);
+                modalBox.appendChild(messageDiv);
+                modalBox.appendChild(invoiceFilenameDiv);
+                modalBox.appendChild(okButton);
+                modalOverlay.appendChild(modalBox);
+
+                // Add to page
+                document.body.appendChild(modalOverlay);
+
+                // Add CSS animation keyframes if not already added
+                if (!document.querySelector('#newInvoiceModalStyles')) {
+                    const style = document.createElement('style');
+                    style.id = 'newInvoiceModalStyles';
+                    style.textContent = `
+                        @keyframes newInvoiceSlideIn {
+                            from {
+                                transform: translateY(-50px) scale(0.9);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translateY(0) scale(1);
+                                opacity: 1;
+                            }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            }
+
+            hideNewInvoiceModal() {
+                const existingModal = document.getElementById('newInvoiceModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+            }
+
+            handleInvoiceReady(messageData) {
+                try {
+                    console.log('Invoice ready message received:', messageData);
+                    
+                    // Extract invoice number from the message
+                    let invoiceNumber = null;
+                    if (messageData.invoiceNumber) {
+                        invoiceNumber = messageData.invoiceNumber;
+                    } else if (messageData.data && messageData.data.invoiceNumber) {
+                        invoiceNumber = messageData.data.invoiceNumber;
+                    } else if (typeof messageData === 'string') {
+                        // If the entire messageData is just the invoice number
+                        invoiceNumber = messageData;
+                    }
+                    
+                    if (!invoiceNumber) {
+                        console.error('No invoice number found in invoice_ready message');
+                        this.logMessage('error', 'Invoice ready message received without invoice number');
+                        return;
+                    }
+                    
+                    // Store the pending invoice information
+                    this.pendingInvoice = {
+                        invoiceNumber: invoiceNumber,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // Clear any received invoice data for new invoice
+                    this.receivedInvoiceData = null;
+                    
+                    // Show the invoice ready overlay
+                    this.showInvoiceReadyOverlay(invoiceNumber);
+                    
+                    this.logMessage('info', `Invoice ${invoiceNumber} is ready!`);
+                    
+                } catch (error) {
+                    console.error('Error handling invoice ready:', error);
+                    this.logMessage('error', `Failed to process invoice ready: ${error.message}`);
+                }
+            }
+
+            showInvoiceReadyOverlay(invoiceNumber) {
+                // Remove any existing overlay
+                this.hideInvoiceReadyOverlay();
+                
+                // Create overlay container
+                const overlay = document.createElement('div');
+                overlay.id = 'invoiceReadyOverlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                `;
+                
+                // Create modal box
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+                    padding: 40px;
+                    max-width: 450px;
+                    width: 90%;
+                    text-align: center;
+                    margin-bottom: 20px;
+                `;
+                
+                // Create title
+                const title = document.createElement('h3');
+                title.textContent = 'Invoice Ready!';
+                title.style.cssText = `
+                    margin: 0 0 15px 0;
+                    color: #28a745;
+                    font-size: 24px;
+                    font-weight: 600;
+                    font-family: 'Arial', sans-serif;
+                `;
+                
+                // Create message
+                const messageDiv = document.createElement('p');
+                messageDiv.innerHTML = `A new invoice has been generated!<br><strong>Invoice Number: ${invoiceNumber}</strong>`;
+                messageDiv.style.cssText = `
+                    margin: 0 0 20px 0;
+                    color: #555;
+                    font-size: 16px;
+                    line-height: 1.5;
+                `;
+                
+                // Create invoice number display
+                const invoiceNumberDiv = document.createElement('div');
+                invoiceNumberDiv.textContent = `Invoice #${invoiceNumber}`;
+                invoiceNumberDiv.style.cssText = `
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 6px;
+                    padding: 12px;
+                    margin: 0 0 25px 0;
+                    font-family: monospace;
+                    font-size: 16px;
+                    color: #495057;
+                    font-weight: 500;
+                `;
+                
+                // Create OK button
+                const okButton = document.createElement('button');
+                okButton.textContent = 'OK';
+                okButton.style.cssText = `
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 12px 35px;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                `;
+                
+                // Add hover effect
+                okButton.onmouseover = () => {
+                    okButton.style.background = '#218838';
+                    okButton.style.transform = 'translateY(-1px)';
+                };
+                okButton.onmouseout = () => {
+                    okButton.style.background = '#28a745';
+                    okButton.style.transform = 'translateY(0)';
+                };
+                
+                okButton.onclick = () => {
+                    this.hideInvoiceReadyOverlay();
+                };
+                
+                // Append elements
+                modal.appendChild(title);
+                modal.appendChild(messageDiv);
+                modal.appendChild(invoiceNumberDiv);
+                modal.appendChild(okButton);
+                overlay.appendChild(modal);
+                
+                // Add to document
+                document.body.appendChild(overlay);
+                
+                // Add animation styles
+                if (!document.getElementById('invoiceReadyAnimationStyle')) {
+                    const style = document.createElement('style');
+                    style.id = 'invoiceReadyAnimationStyle';
+                    style.textContent = `
+                        @keyframes invoiceReadySlideIn {
+                            from {
+                                transform: translateY(-50px) scale(0.9);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translateY(0) scale(1);
+                                opacity: 1;
+                            }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                // Apply animation
+                modal.style.animation = 'invoiceReadySlideIn 0.3s ease-out';
+                
+                // Prevent clicks on overlay from closing modal
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        this.hideInvoiceReadyOverlay();
+                    }
+                };
+            }
+
+            hideInvoiceReadyOverlay() {
+                const existingOverlay = document.getElementById('invoiceReadyOverlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+            }
+
+            handleReconnection() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    
+                    this.logMessage('info', `Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                    this.updateStatus('disconnected', `Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                    
+                    // Clear any existing reconnection timeout
+                    if (this.reconnectInterval) {
+                        clearTimeout(this.reconnectInterval);
+                    }
+                    
+                    // Set timeout with exponential backoff
+                    const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+                    this.reconnectInterval = setTimeout(() => {
+                        // Use stored URL for reconnection instead of input field
+                        if (this.websocketUrl) {
+                            this.reconnectToUrl(this.websocketUrl);
+                        } else {
+                            this.logMessage('error', 'No stored WebSocket URL for reconnection');
+                        }
+                    }, delay);
+                    
+                } else {
+                    this.logMessage('error', 'Max reconnection attempts reached. Please try connecting manually.');
+                    this.updateStatus('disconnected', 'Connection Failed - Max Attempts Reached');
+                    
+                    // Clear the reconnection interval
+                    if (this.reconnectInterval) {
+                        clearTimeout(this.reconnectInterval);
+                        this.reconnectInterval = null;
+                    }
+                }
+            }
+
+            reconnectToUrl(url) {
+                this.updateStatus('connecting', 'Reconnecting...');
+                this.logMessage('info', `Reconnecting to: ${url}`);
+
+                try {
+                    this.websocket = new WebSocket(url);
+                    
+                    this.websocket.onopen = (event) => {
+                        this.isConnected = true;
+                        this.reconnectAttempts = 0; // Reset reconnection attempts
+                        this.isManualDisconnect = false; // Reset manual disconnect flag
+                        this.updateStatus('connected', 'Connected');
+                        this.logMessage('success', 'WebSocket reconnected successfully');
+                        this.updateButtonStates();
+                        
+                        // Clear any existing reconnection interval
+                        if (this.reconnectInterval) {
+                            clearTimeout(this.reconnectInterval);
+                            this.reconnectInterval = null;
+                        }
+                        
+                        // Send admin_register event
+                        this.sendAdminRegister();
+                    };
+
+                    this.websocket.onmessage = (event) => {
+                        this.handleMessage(event);
+                    };
+
+                    this.websocket.onclose = (event) => {
+                        this.isConnected = false;
+                        this.updateStatus('disconnected', 'Disconnected');
+                        this.logMessage('info', `WebSocket closed (Code: ${event.code})`);
+                        this.updateButtonStates();
+                        
+                        // Only attempt reconnection if it wasn't a manual disconnect
+                        if (!this.isManualDisconnect) {
+                            this.handleReconnection();
+                        }
+                    };
+
+                    this.websocket.onerror = (error) => {
+                        this.logMessage('error', 'WebSocket connection error');
+                        console.error('WebSocket error:', error);
+                        
+                        // On error, also try to reconnect (unless manual disconnect)
+                        if (!this.isManualDisconnect) {
+                            this.handleReconnection();
+                        }
+                    };
+
+                } catch (error) {
+                    this.logMessage('error', `Failed to reconnect WebSocket: ${error.message}`);
+                    this.updateStatus('disconnected', 'Reconnection Failed');
+                    
+                    // If not manual disconnect, attempt reconnection
+                    if (!this.isManualDisconnect) {
+                        this.handleReconnection();
+                    }
+                }
+            }
+
+            updateButtonStates() {
+                this.connectBtn.disabled = this.isConnected;
+                this.disconnectBtn.disabled = !this.isConnected;
+                this.getOrderBtn.disabled = !this.isConnected;
+                this.playerIdInput.disabled = !this.isConnected;
+            }
+
+            logMessage(type, message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                
+                this.log.appendChild(logEntry);
+                this.log.scrollTop = this.log.scrollHeight;
+                this.log.style.display = 'block';
+            }
+        }
+
+        // Initialize the client
+        const client = new OnScreenClient();
+
+        // Global function for closing order overlay
+        function hideOrderConfirmation() {
+            document.getElementById('orderConfirmationOverlay').style.display = 'none';
+        }
+
+        // Global function for requesting invoice
+        function requestInvoice() {
+            client.requestInvoice();
+        }
+
+        function toggleCollapsible(frameId) {
+            const content = document.getElementById(frameId);
+            const toggle = document.getElementById(frameId.replace('Frame', 'Toggle'));
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+            }
+        }
+
+        // Close overlay when clicking outside
+        document.getElementById('orderConfirmationOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('orderConfirmationOverlay')) {
+                hideOrderConfirmation();
+            }
+        });
+
+        // Close overlay with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideOrderConfirmation();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -113,21 +113,18 @@ export class UIManager {
         // Create overlay if it doesn't exist
         let overlay = document.getElementById('redhat-collected-overlay');
         if (!overlay) {
-            overlay = document.createElement('img');
+            overlay = document.createElement('div');
             overlay.id = 'redhat-collected-overlay';
-            overlay.src = 'assets/red_hat_icon.png';
-            overlay.alt = 'Red Hat Collected';
             overlay.style.cssText = `
                 position: fixed;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                width: 64px;
-                height: 64px;
                 z-index: 2000;
-                animation: redhat-flash 0.5s ease-in-out;
+                animation: redhat-flash 1s ease-in-out;
                 pointer-events: none;
                 display: none;
+                text-align: center;
             `;
             
             // Add CSS animation
@@ -137,7 +134,8 @@ export class UIManager {
                 style.textContent = `
                     @keyframes redhat-flash {
                         0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-                        50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+                        30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+                        70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
                         100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
                     }
                 `;
@@ -147,14 +145,117 @@ export class UIManager {
             document.body.appendChild(overlay);
         }
         
+        // Update overlay content with Red Hat info
+        overlay.innerHTML = `
+            <img src="assets/red_hat_icon.png" alt="Red Hat Collected" style="
+                width: 64px;
+                height: 64px;
+                display: block;
+                margin: 0 auto 10px auto;
+            ">
+            <div style="
+                background: rgba(0, 0, 0, 0.7);
+                padding: 10px 15px;
+                border-radius: 8px;
+                display: inline-block;
+            ">
+                <div style="
+                    color: #dc3545;
+                    font-size: 18px;
+                    font-weight: bold;
+                ">
+                    Extra life gained!
+                </div>
+            </div>
+        `;
+        
         overlay.style.display = 'block';
         
-        // Auto-hide after 500 milliseconds
+        // Auto-hide after 1000 milliseconds
         setTimeout(() => {
             if (overlay) {
                 overlay.style.display = 'none';
             }
-        }, 500);
+        }, 1000);
+    }
+
+    // T-Shirt collected overlay
+    showTShirtCollectedOverlay(tShirtConfig) {
+        // Create overlay container if it doesn't exist
+        let overlay = document.getElementById('tshirt-collected-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'tshirt-collected-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 2000;
+                animation: tshirt-flash 1s ease-in-out;
+                pointer-events: none;
+                display: none;
+                text-align: center;
+            `;
+            
+            // Add CSS animation
+            if (!document.getElementById('tshirt-overlay-styles')) {
+                const style = document.createElement('style');
+                style.id = 'tshirt-overlay-styles';
+                style.textContent = `
+                    @keyframes tshirt-flash {
+                        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+                        30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+                        70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                        100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(overlay);
+        }
+        
+        // Update overlay content with T-shirt info
+        const tShirtName = tShirtConfig.id.charAt(0).toUpperCase() + tShirtConfig.id.slice(1);
+        overlay.innerHTML = `
+            <img src="${tShirtConfig.src}" alt="${tShirtName} T-Shirt" style="
+                width: 64px;
+                height: 64px;
+                display: block;
+                margin: 0 auto 10px auto;
+            ">
+            <div style="
+                background: rgba(0, 0, 0, 0.7);
+                padding: 10px 15px;
+                border-radius: 8px;
+                display: inline-block;
+            ">
+                <div style="
+                    color: #28a745;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                ">
+                    ${tShirtName} T-Shirt Ordered!
+                </div>
+                <div style="
+                    color: #ffffff;
+                    font-size: 14px;
+                ">
+                    Added to your collection
+                </div>
+            </div>
+        `;
+        
+        overlay.style.display = 'block';
+        
+        // Auto-hide after 1000 milliseconds
+        setTimeout(() => {
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 1000);
     }
 
     // Pause overlay management
@@ -210,18 +311,20 @@ export class UIManager {
 
         if (shoppingBasket.length === 0) {
             if (onPlaceOrder === null) {
-                // Admin end game with no items - special message
-                this._populateOrderItems(shoppingBasket, "The admin has ended your game. You have not collected any items to order. Please wait for the game to be restarted.");
-                this._setupOrderButtonsForAutoSubmitted(onCancel);
+                // Admin end game with no items - show compact order without close button, show waiting message
+                this._populateOrderItems(shoppingBasket);
+                this._setupOrderButtonsForNoItemsWaiting();
+                this._showAdminEndGameDialog("You have not collected any items to order. Please wait for the game to be restarted.");
             } else {
                 // Regular no items message
                 this._populateOrderItems(shoppingBasket, "No items collected!");
                 this._setupOrderButtonsForEmptyBasket(onCancel);
             }
         } else {
-            this._populateOrderItems(shoppingBasket, "The admin has ended your game, here's the all of the items collected and will be ordered:");
-            // Use waiting message only when items are collected
+            // Show compact order without admin message, then show dialog
+            this._populateOrderItems(shoppingBasket);
             this._setupOrderButtonsForGameEnd(onPlaceOrder);
+            this._showAdminEndGameDialog("Here are all of the items you collected. Your order has been automatically submitted!");
         }
     }
 
@@ -339,6 +442,183 @@ export class UIManager {
         });
 
         this.elements.orderTotalDisplay.textContent = "£" + totalCost;
+    }
+
+    _showAdminEndGameDialog(message) {
+        // Remove any existing dialog
+        this._hideAdminEndGameDialog();
+
+        // Create dialog overlay
+        const dialogOverlay = document.createElement('div');
+        dialogOverlay.id = 'adminEndGameDialog';
+        dialogOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            font-family: 'Roboto', sans-serif;
+        `;
+
+        // Create dialog box
+        const dialogBox = document.createElement('div');
+        dialogBox.style.cssText = `
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            animation: dialogSlideIn 0.3s ease-out;
+        `;
+
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #666;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        `;
+
+        closeButton.onmouseover = () => {
+            closeButton.style.background = '#f0f0f0';
+            closeButton.style.color = '#333';
+        };
+
+        closeButton.onmouseout = () => {
+            closeButton.style.background = 'none';
+            closeButton.style.color = '#666';
+        };
+
+        // Create title
+        const title = document.createElement('h3');
+        title.textContent = 'Game Ended by Admin';
+        title.style.cssText = `
+            margin: 0 0 20px 0;
+            color: #dc3545;
+            font-size: 20px;
+            font-weight: 600;
+        `;
+
+        // Create message
+        const messageDiv = document.createElement('p');
+        messageDiv.textContent = message;
+        messageDiv.style.cssText = `
+            margin: 0 0 25px 0;
+            color: #555;
+            font-size: 16px;
+            line-height: 1.5;
+        `;
+
+        // Create OK button
+        const okButton = document.createElement('button');
+        okButton.textContent = 'OK';
+        okButton.style.cssText = `
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        `;
+
+        okButton.onmouseover = () => {
+            okButton.style.background = '#c82333';
+        };
+
+        okButton.onmouseout = () => {
+            okButton.style.background = '#dc3545';
+        };
+
+        // Add event listeners
+        const closeDialog = () => {
+            this._hideAdminEndGameDialog();
+        };
+
+        closeButton.onclick = closeDialog;
+        okButton.onclick = closeDialog;
+
+        // Close on overlay click
+        dialogOverlay.onclick = (e) => {
+            if (e.target === dialogOverlay) {
+                closeDialog();
+            }
+        };
+
+        // Close on Escape key
+        const handleKeyPress = (e) => {
+            if (e.key === 'Escape') {
+                closeDialog();
+                document.removeEventListener('keydown', handleKeyPress);
+            }
+        };
+        document.addEventListener('keydown', handleKeyPress);
+
+        // Assemble dialog
+        dialogBox.appendChild(closeButton);
+        dialogBox.appendChild(title);
+        dialogBox.appendChild(messageDiv);
+        dialogBox.appendChild(okButton);
+        dialogOverlay.appendChild(dialogBox);
+
+        // Add to page
+        document.body.appendChild(dialogOverlay);
+
+        // Add CSS animation keyframes if not already added
+        if (!document.querySelector('#adminDialogStyles')) {
+            const style = document.createElement('style');
+            style.id = 'adminDialogStyles';
+            style.textContent = `
+                @keyframes dialogSlideIn {
+                    from {
+                        transform: translateY(-50px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateY(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    _hideAdminEndGameDialog() {
+        console.log('🚫 _hideAdminEndGameDialog called');
+        const existingDialog = document.getElementById('adminEndGameDialog');
+        if (existingDialog) {
+            console.log('✅ Admin dialog found, removing it');
+            existingDialog.remove();
+            console.log('✅ Admin dialog removed');
+        } else {
+            console.log('❌ Admin dialog not found');
+        }
     }
 
     _setupOrderButtons(onCancel, onPlaceOrder) {
@@ -516,9 +796,80 @@ export class UIManager {
         }
     }
 
+    _setupOrderButtonsForAutoSubmitted(onCancel) {
+        // Set up cancel button as "Close" for auto-submitted orders
+        if (this.elements.cancelOrderButton) {
+            this.elements.cancelOrderButton.replaceWith(this.elements.cancelOrderButton.cloneNode(true));
+            this.elements.cancelOrderButton = document.getElementById('cancelOrderButton');
+            
+            // Change button text to "Close"
+            this.elements.cancelOrderButton.textContent = 'Close';
+            
+            this.elements.cancelOrderButton.addEventListener('click', onCancel);
+            this.elements.cancelOrderButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel();
+            });
+        }
+
+        // Hide place order button since order is already submitted
+        if (this.elements.placeOrderButton) {
+            this.elements.placeOrderButton.style.display = 'none';
+        }
+    }
+
+    _setupOrderButtonsForNoItemsWaiting() {
+        // Hide cancel button completely
+        if (this.elements.cancelOrderButton) {
+            this.elements.cancelOrderButton.style.display = 'none';
+        }
+
+        // Replace place order button with waiting message
+        if (this.elements.placeOrderButton) {
+            const waitingMessage = document.createElement('div');
+            waitingMessage.className = 'waiting-for-restart-message';
+            waitingMessage.style.cssText = `
+                background: #f8f9fa;
+                border: 2px solid #10b981;
+                color: #10b981;
+                padding: 15px 20px;
+                border-radius: 8px;
+                text-align: center;
+                font-weight: 600;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 44px;
+                margin: 10px 0;
+                animation: waiting-pulse 2s ease-in-out infinite;
+            `;
+            waitingMessage.textContent = 'Please wait for the game to be restarted';
+            
+            // Add pulsing animation
+            if (!document.getElementById('waiting-restart-styles')) {
+                const style = document.createElement('style');
+                style.id = 'waiting-restart-styles';
+                style.textContent = `
+                    @keyframes waiting-pulse {
+                        0%, 100% { opacity: 0.7; }
+                        50% { opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            this.elements.placeOrderButton.parentNode.replaceChild(waitingMessage, this.elements.placeOrderButton);
+        }
+    }
+
     hideOrderConfirmation() {
+        console.log('🚫 hideOrderConfirmation called');
         if (this.elements.orderConfirmationOverlay) {
+            console.log('✅ Order confirmation overlay found, current display:', this.elements.orderConfirmationOverlay.style.display);
             this.elements.orderConfirmationOverlay.style.display = 'none';
+            console.log('✅ Order confirmation overlay display set to none');
             
             // Remove any waiting messages from the order confirmation box
             const waitingMessages = this.elements.orderConfirmationOverlay.querySelectorAll('.waiting-message');
@@ -531,24 +882,36 @@ export class UIManager {
                 this.elements.cancelOrderButton.style.display = '';
             }
             
+            // Hide admin dialog if it exists
+            this._hideAdminEndGameDialog();
+            
             // Clear invoice data when closing order confirmation
             if (this.websocketController) {
                 this.websocketController.clearInvoiceData();
             }
+            
+            console.log('🎯 Order confirmation hidden successfully');
+        } else {
+            console.log('❌ Order confirmation overlay not found');
         }
     }
 
     // Hide all overlays except the game canvas
     hideAllOverlays() {
+        console.log('🧹 hideAllOverlays called');
         this.hidePauseOverlay();
         this.hideOrderConfirmation();
         this.hideRegistration();
         this.hideGoButtonOverlay(); // Hide Go button if it exists
+        this.hideWaitingForGameOverlay(); // Hide waiting overlay if it exists
+        this.hideWelcomeModal(); // Hide welcome modal if it exists
+        this._hideAdminEndGameDialog(); // Hide admin dialog if it exists
         
         // Clear invoice data if WebSocket controller is available
         if (this.websocketController) {
             this.websocketController.clearInvoiceData();
         }
+        console.log('🧹 hideAllOverlays completed');
     }
 
     // Show "Go!" button overlay on canvas
@@ -654,6 +1017,285 @@ export class UIManager {
         }
     }
 
+    // Show waiting for game overlay
+    showWaitingForGameOverlay() {
+        console.log('🔄 showWaitingForGameOverlay called');
+        
+        // Remove existing waiting overlay if any
+        this.hideWaitingForGameOverlay();
+        
+        const canvas = document.getElementById('gameCanvas');
+        if (!canvas) {
+            console.error('❌ Canvas not found for waiting overlay');
+            return;
+        }
+        
+        console.log('✅ Canvas found, creating waiting overlay');
+        
+        // Create waiting overlay
+        const waitingOverlay = document.createElement('div');
+        waitingOverlay.id = 'waitingForGameOverlay';
+        waitingOverlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            pointer-events: all;
+            color: white;
+            font-family: Arial, sans-serif;
+        `;
+        
+        // Create the message container
+        const messageContainer = document.createElement('div');
+        messageContainer.style.cssText = `
+            text-align: center;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 20px;
+            border: 2px solid #10b981;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            max-width: 400px;
+        `;
+        
+        // Create the main message
+        const mainMessage = document.createElement('h2');
+        mainMessage.textContent = 'Please wait for the game to begin';
+        mainMessage.style.cssText = `
+            color: #10b981;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 0 20px 0;
+            text-align: center;
+        `;
+        
+        // Create the sub message
+        const subMessage = document.createElement('p');
+        subMessage.textContent = 'Your administrator will start the game shortly';
+        subMessage.style.cssText = `
+            color: #ffffff;
+            font-size: 16px;
+            margin: 0;
+            text-align: center;
+            line-height: 1.5;
+        `;
+        
+        // Create loading animation
+        const loadingDots = document.createElement('div');
+        loadingDots.style.cssText = `
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        `;
+        
+        // Add three animated dots
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('div');
+            dot.style.cssText = `
+                width: 8px;
+                height: 8px;
+                background: #10b981;
+                border-radius: 50%;
+                margin: 0 4px;
+                animation: waiting-dot-pulse 1.5s ease-in-out infinite;
+                animation-delay: ${i * 0.2}s;
+            `;
+            loadingDots.appendChild(dot);
+        }
+        
+        // Add CSS animation for dots
+        if (!document.getElementById('waiting-overlay-styles')) {
+            const style = document.createElement('style');
+            style.id = 'waiting-overlay-styles';
+            style.textContent = `
+                @keyframes waiting-dot-pulse {
+                    0%, 60%, 100% { 
+                        opacity: 0.3;
+                        transform: scale(1);
+                    }
+                    30% { 
+                        opacity: 1;
+                        transform: scale(1.2);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Assemble the overlay
+        messageContainer.appendChild(mainMessage);
+        messageContainer.appendChild(subMessage);
+        messageContainer.appendChild(loadingDots);
+        waitingOverlay.appendChild(messageContainer);
+        
+        // Add to canvas container or body
+        const canvasContainer = canvas.parentElement;
+        if (canvasContainer) {
+            canvasContainer.style.position = 'relative';
+            canvasContainer.appendChild(waitingOverlay);
+            console.log('✅ Waiting overlay added to canvas container');
+        } else {
+            document.body.appendChild(waitingOverlay);
+            console.log('✅ Waiting overlay added to body');
+        }
+        
+        console.log('🎯 Waiting overlay setup complete');
+    }
+
+    // Hide waiting for game overlay
+    hideWaitingForGameOverlay() {
+        const waitingOverlay = document.getElementById('waitingForGameOverlay');
+        if (waitingOverlay) {
+            waitingOverlay.remove();
+        }
+    }
+
+    // Show welcome modal after first registration
+    showWelcomeModal(onContinue) {
+        // Remove existing welcome modal if any
+        this.hideWelcomeModal();
+        
+        // Create welcome modal overlay
+        const welcomeOverlay = document.createElement('div');
+        welcomeOverlay.id = 'welcomeModal';
+        welcomeOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            font-family: 'Roboto', sans-serif;
+        `;
+
+        // Create welcome modal box
+        const welcomeBox = document.createElement('div');
+        welcomeBox.style.cssText = `
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            animation: welcomeSlideIn 0.5s ease-out;
+            border: 3px solid #10b981;
+        `;
+
+        // Create welcome title
+        const title = document.createElement('h2');
+        title.textContent = 'Welcome to the FTM promotion!';
+        title.style.cssText = `
+            color: #10b981;
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0 0 25px 0;
+            text-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        `;
+
+        // Create welcome message
+        const message = document.createElement('div');
+        message.innerHTML = `
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">
+                Help your intrepid friend collect coins as you move around the maze. When you have enough cash collected t-shirts will appear for you to collect and order.
+            </p>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">
+                Watch out for ghosts who will eat up your game lives!
+            </p>
+            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                Keep an eye out for the leaderboard as your highest score might win a prize!
+            </p>
+        `;
+
+        // Create continue button
+        const continueButton = document.createElement('button');
+        continueButton.textContent = 'Let\'s Play!';
+        continueButton.style.cssText = `
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            transform: scale(1);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        `;
+
+        // Add button hover effects
+        continueButton.onmouseover = () => {
+            continueButton.style.transform = 'scale(1.05)';
+            continueButton.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.6)';
+        };
+
+        continueButton.onmouseout = () => {
+            continueButton.style.transform = 'scale(1)';
+            continueButton.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.4)';
+        };
+
+        // Add click handler
+        continueButton.onclick = () => {
+            this.hideWelcomeModal();
+            if (onContinue) {
+                onContinue();
+            }
+        };
+
+        // Add CSS animation
+        if (!document.getElementById('welcome-modal-styles')) {
+            const style = document.createElement('style');
+            style.id = 'welcome-modal-styles';
+            style.textContent = `
+                @keyframes welcomeSlideIn {
+                    0% { 
+                        opacity: 0; 
+                        transform: translateY(-50px) scale(0.9); 
+                    }
+                    100% { 
+                        opacity: 1; 
+                        transform: translateY(0) scale(1); 
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Assemble the modal
+        welcomeBox.appendChild(title);
+        welcomeBox.appendChild(message);
+        welcomeBox.appendChild(continueButton);
+        welcomeOverlay.appendChild(welcomeBox);
+
+        // Add to body
+        document.body.appendChild(welcomeOverlay);
+
+        // Focus the continue button for accessibility
+        setTimeout(() => continueButton.focus(), 100);
+    }
+
+    // Hide welcome modal
+    hideWelcomeModal() {
+        const welcomeModal = document.getElementById('welcomeModal');
+        if (welcomeModal) {
+            welcomeModal.remove();
+        }
+    }
+
 
     // Registration functions
     async handleRegistration() {
@@ -746,18 +1388,20 @@ export class UIManager {
             'Dancing', 'Prancing', 'Skipping', 'Hopping', 'Flying', 'Floating', 'Glowing',
             'Shining', 'Twinkling', 'Magical', 'Mystical', 'Whimsical', 'Playful', 'Mischievous',
             'Curious', 'Adventurous', 'Bold', 'Brave', 'Clever', 'Smart', 'Witty', 'Crafty',
-            'able', 'acidic', 'adorable', 'adventurous', 'affectionate', 'aged', 'agile', 'agreeable', 'ambitious', 'ancient',
-            'angry', 'anxious', 'aquatic', 'arrogant', 'attractive', 'beautiful', 'bewildered', 'big', 'bitter', 'bizarre',
-            'black', 'blue', 'brave', 'bright', 'brilliant', 'broad', 'busy', 'calm', 'cautious', 'charming',
-            'cheerful', 'clean', 'clever', 'cloudy', 'cold', 'colorful', 'comfortable', 'courageous', 'crazy', 'creamy',
-            'creepy', 'crisp', 'cruel', 'curious', 'curly', 'dangerous', 'dark', 'delicious', 'delightful', 'difficult',
-            'diligent', 'dirty', 'dry', 'eager', 'easy', 'elegant', 'empty', 'enormous', 'enthusiastic', 'excellent',
-            'excited', 'exotic', 'expensive', 'faint', 'fair', 'faithful', 'fancy', 'fantastic', 'fast', 'fearless',
-            'filthy', 'firm', 'fluffy', 'foolish', 'fragile', 'free', 'friendly', 'frightened', 'funny', 'generous',
-            'gentle', 'giant', 'gorgeous', 'graceful', 'grand', 'grateful', 'green', 'grumpy', 'happy', 'hard',
-            'harsh', 'healthy', 'heavy', 'helpful', 'hilarious', 'hot', 'huge', 'humble', 'hungry', 'icy'
+            'Able', 'Acidic', 'Adorable', 'Adventurous', 'Affectionate', 'Aged', 'Agile', 'Agreeable',
+            'Ambitious', 'Ancient', 'Angry', 'Anxious', 'Aquatic', 'Arrogant', 'Attractive', 'Beautiful',
+            'Bewildered', 'Big', 'Bitter', 'Bizarre', 'Black', 'Blue', 'Brave', 'Bright',
+            'Brilliant', 'Broad', 'Busy', 'Calm', 'Cautious', 'Charming', 'Cheerful', 'Clean',
+            'Clever', 'Cloudy', 'Cold', 'Colorful', 'Comfortable', 'Courageous', 'Crazy', 'Creamy',
+            'Creepy', 'Crisp', 'Cruel', 'Curious', 'Curly', 'Dangerous', 'Dark', 'Delicious',
+            'Delightful', 'Difficult', 'Diligent', 'Dirty', 'Dry', 'Eager', 'Easy', 'Elegant',
+            'Empty', 'Enormous', 'Enthusiastic', 'Excellent', 'Excited', 'Exotic', 'Expensive', 'Faint',
+            'Fair', 'Faithful', 'Fancy', 'Fantastic', 'Fast', 'Fearless', 'Filthy', 'Firm',
+            'Fluffy', 'Foolish', 'Fragile', 'Free', 'Friendly', 'Frightened', 'Funny', 'Generous',
+            'Gentle', 'Giant', 'Gorgeous', 'Graceful', 'Grand', 'Grateful', 'Green', 'Grumpy',
+            'Happy', 'Hard', 'Harsh', 'Healthy', 'Heavy', 'Helpful', 'Hilarious', 'Hot',
+            'Huge', 'Humble', 'Hungry', 'Icy'
         ];
-
         const nouns = [
             'Penguin', 'Llama', 'Pineapple', 'Butterfly', 'Rainbow', 'Unicorn', 'Dragon', 'Phoenix',
             'Narwhal', 'Platypus', 'Octopus', 'Jellyfish', 'Seahorse', 'Starfish', 'Dolphin', 'Whale',
@@ -766,16 +1410,20 @@ export class UIManager {
             'Wizard', 'Knight', 'Pirate', 'Robot', 'Ninja', 'Astronaut', 'Explorer', 'Inventor',
             'Artist', 'Musician', 'Dancer', 'Chef', 'Gardener', 'Builder', 'Dreamer', 'Wanderer',
             'Cookie', 'Cupcake', 'Donut', 'Waffle', 'Pancake', 'Muffin', 'Sandwich', 'Pizza',
-            'Rocket', 'Balloon', 'Kite', 'Castle', 'Bridge', 'Mountain', 'Cloud', 'Star',  'aardvark', 'albatross', 'alligator', 'alpaca', 'antelope', 'armadillo', 'badger', 'bat', 'bear', 'beaver',
-            'bee', 'bird', 'bison', 'boa', 'buffalo', 'butterfly', 'camel', 'cat', 'caterpillar', 'chameleon',
-            'cheetah', 'chicken', 'chimpanzee', 'chinchilla', 'cobra', 'cod', 'cow', 'coyote', 'crab', 'crane',
-            'cricket', 'crocodile', 'crow', 'deer', 'dinosaur', 'dog', 'dolphin', 'donkey', 'dragonfly', 'duck',
-            'eagle', 'eel', 'elephant', 'elk', 'falcon', 'ferret', 'fish', 'flamingo', 'fox', 'frog',
-            'gazelle', 'gecko', 'gerbil', 'giraffe', 'goat', 'goose', 'gorilla', 'grasshopper', 'hamster', 'hawk',
-            'hedgehog', 'hippopotamus', 'horse', 'hummingbird', 'iguana', 'jaguar', 'jellyfish', 'kangaroo', 'koala', 'komodo',
-            'lion', 'lizard', 'llama', 'lobster', 'lynx', 'macaw', 'moose', 'mouse', 'narwhal', 'octopus',
-            'ostrich', 'otter', 'owl', 'ox', 'panda', 'panther', 'parrot', 'peacock', 'pelican', 'penguin',
-            'pig', 'pigeon', 'polarbear', 'pony', 'puffin', 'quail', 'rabbit', 'raccoon'
+            'Rocket', 'Balloon', 'Kite', 'Castle', 'Bridge', 'Mountain', 'Cloud', 'Star',
+            'Aardvark', 'Albatross', 'Alligator', 'Alpaca', 'Antelope', 'Armadillo', 'Badger', 'Bat',
+            'Bear', 'Beaver', 'Bee', 'Bird', 'Bison', 'Boa', 'Buffalo', 'Butterfly',
+            'Camel', 'Cat', 'Caterpillar', 'Chameleon', 'Cheetah', 'Chicken', 'Chimpanzee', 'Chinchilla',
+            'Cobra', 'Cod', 'Cow', 'Coyote', 'Crab', 'Crane', 'Cricket', 'Crocodile',
+            'Crow', 'Deer', 'Dinosaur', 'Dog', 'Dolphin', 'Donkey', 'Dragonfly', 'Duck',
+            'Eagle', 'Eel', 'Elephant', 'Elk', 'Falcon', 'Ferret', 'Fish', 'Flamingo',
+            'Fox', 'Frog', 'Gazelle', 'Gecko', 'Gerbil', 'Giraffe', 'Goat', 'Goose',
+            'Gorilla', 'Grasshopper', 'Hamster', 'Hawk', 'Hedgehog', 'Hippopotamus', 'Horse', 'Hummingbird',
+            'Iguana', 'Jaguar', 'Jellyfish', 'Kangaroo', 'Koala', 'Komodo', 'Lion', 'Lizard',
+            'Llama', 'Lobster', 'Lynx', 'Macaw', 'Moose', 'Mouse', 'Narwhal', 'Octopus',
+            'Ostrich', 'Otter', 'Owl', 'Ox', 'Panda', 'Panther', 'Parrot', 'Peacock',
+            'Pelican', 'Penguin', 'Pig', 'Pigeon', 'Polarbear', 'Pony', 'Puffin', 'Quail',
+            'Rabbit', 'Raccoon'
         ];
 
         const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];

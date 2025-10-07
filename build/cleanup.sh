@@ -25,13 +25,11 @@ oc delete route redhat-quest-game-route --ignore-not-found=true
 oc delete route redhat-quest-admin-route --ignore-not-found=true
 oc delete route redhat-quest-leaderboard-route --ignore-not-found=true
 oc delete route redhat-quest-server --ignore-not-found=true
-oc delete route redhat-quest-websocket-route --ignore-not-found=true
 oc delete route redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting Services..."
 oc delete service redhat-quest-game-service --ignore-not-found=true
 oc delete service redhat-quest-server --ignore-not-found=true
-oc delete service redhat-quest-websocket-service --ignore-not-found=true
 oc delete service redhat-quest --ignore-not-found=true
 
 echo "🗑️  Deleting Deployment..."

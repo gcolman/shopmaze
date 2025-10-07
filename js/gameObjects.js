@@ -454,14 +454,21 @@ export class GameObjectManager {
                 console.log('GameObjects: Shopping basket now contains:', this.shoppingBasket);
                 
                 this.currentCoinCount -= result.cost;
+                
+                // Get the full T-shirt configuration for the overlay
+                const tShirts = this.assetLoader.getTShirts();
+                const tShirtConfig = tShirts.find(t => t.id === tShirtId);
+                
                 this.removeTShirtFromLevel();
                 
                 // Mark as collected in the main t-shirts array
-                const tShirts = this.assetLoader.getTShirts();
-                const tShirt = tShirts.find(t => t.id === tShirtId);
-                if (tShirt) tShirt.collected = true;
+                if (tShirtConfig) tShirtConfig.collected = true;
                 
-                return { success: true, cost: result.cost };
+                return { 
+                    success: true, 
+                    cost: result.cost, 
+                    tShirtConfig: tShirtConfig 
+                };
             } else {
                 return { success: false, cost: result.cost };
             }

@@ -281,6 +281,7 @@ export class WebSocketController {
 
     handleEndGameCommand() {
         try {
+            console.log(">>>>>>handleEndGameCommand()");
             // Only end the game if it's currently active
             if (this.gameController.gameActive && !this.gameController.gameOver) {
                 this.gameController._endGame("Game ended remotely via WebSocket command.", 'admin_control');
@@ -461,14 +462,14 @@ export class WebSocketController {
                     break;
 
                 case 'end':
-                    // Check if order confirmation overlay is visible
+                    // Check if order confirmation overlay is visible (player can have another go)
                     const orderOverlayElement = document.getElementById('orderConfirmationOverlay');
                     const isOrderOverlayVisible = orderOverlayElement && orderOverlayElement.style.display !== 'none';
                     
                     console.log('End command received - Order overlay visible:', isOrderOverlayVisible);
                     console.log('Current game state - gameActive:', this.gameController.gameActive, 'gameOver:', this.gameController.gameOver);
                     
-                    // Only prevent processing if game is truly ended AND no order overlay is visible
+                    // If game is already ended and no order overlay is visible, don't process another end command
                     if (this.gameController.gameOver && !this.gameController.gameActive && !isOrderOverlayVisible) {
                         console.log('Game already in final end state - ignoring duplicate end command');
                         break;

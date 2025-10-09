@@ -77,6 +77,11 @@ body {
     font-size: 1.1em;
 }
 
+/* Hide email label by default */
+label[for="emailInput"] {
+    display: none;
+}
+
 #emailInput {
     width: 100%;
     padding: 15px;
@@ -87,6 +92,7 @@ body {
     font-size: 1.1em;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    display: none; /* Hide email field by default */
 }
 
 #emailInput:focus {
@@ -106,6 +112,11 @@ body {
     font-size: 0.9em;
     margin-top: 5px;
     text-align: center;
+}
+
+/* Hide email error div by default */
+#emailError {
+    display: none;
 }
 
 .register-button {

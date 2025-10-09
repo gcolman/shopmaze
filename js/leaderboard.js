@@ -54,8 +54,10 @@ async function loadLeaderboard(silent = false) {
         const hasChanged = dataHash !== lastDataHash;
         
         if (data.success) {
+            // Deduplicate data for display and get the actual count
+            const deduplicatedData = deduplicateLeaderboard(data.data);
             displayLeaderboard(data.data, hasChanged && silent);
-            updateStats(data.count, data.lastUpdated);
+            updateStats(deduplicatedData.length, data.lastUpdated);
             
             // Update tracking variables
             lastDataHash = dataHash;
@@ -84,6 +86,41 @@ async function loadLeaderboard(silent = false) {
     }
 }
 
+// Deduplicate leaderboard entries - keep only the most recent entry for each player-score combination
+function deduplicateLeaderboard(leaderboardData) {
+    if (!leaderboardData || leaderboardData.length === 0) {
+        return leaderboardData;
+    }
+    
+    console.log('Deduplicating leaderboard data:', leaderboardData.length, 'entries');
+    
+    // Create a map to track unique player-score combinations
+    const uniqueEntries = new Map();
+    
+    leaderboardData.forEach(entry => {
+        // Create a unique key combining player ID and score
+        const key = `${entry.userId}-${entry.score}`;
+        
+        // If this combination doesn't exist, or if this entry is more recent, keep it
+        if (!uniqueEntries.has(key) || new Date(entry.timestamp) > new Date(uniqueEntries.get(key).timestamp)) {
+            uniqueEntries.set(key, entry);
+        }
+    });
+    
+    // Convert map back to array and sort by score (descending) then by timestamp (descending)
+    const deduplicatedData = Array.from(uniqueEntries.values()).sort((a, b) => {
+        // First sort by score (higher scores first)
+        if (b.score !== a.score) {
+            return b.score - a.score;
+        }
+        // If scores are equal, sort by timestamp (more recent first)
+        return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+    
+    console.log('Deduplicated leaderboard data:', deduplicatedData.length, 'unique entries');
+    return deduplicatedData;
+}
+
 // Display leaderboard data in table
 function displayLeaderboard(leaderboardData, highlightChanges = false) {
     const contentDiv = document.getElementById('leaderboardContent');
@@ -98,6 +135,9 @@ function displayLeaderboard(leaderboardData, highlightChanges = false) {
         `;
         return;
     }
+
+    // Deduplicate the leaderboard data before displaying
+    const deduplicatedData = deduplicateLeaderboard(leaderboardData);
 
     let tableHTML = `
         <table class="leaderboard-table">
@@ -114,7 +154,7 @@ function displayLeaderboard(leaderboardData, highlightChanges = false) {
             <tbody>
     `;
 
-    leaderboardData.forEach((entry, index) => {
+    deduplicatedData.forEach((entry, index) => {
         const rank = index + 1;
         const rankClass = rank <= 3 ? `rank-${rank}` : '';
         const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
@@ -130,14 +170,10 @@ function displayLeaderboard(leaderboardData, highlightChanges = false) {
                 <td>
                     <div class="player-info">
                         <div class="player-id">${escapeHtml(entry.userId)}</div>
-                        <div class="player-email">${escapeHtml(entry.email)}</div>
                     </div>
                 </td>
                 <td>
                     <div class="score">${entry.score}</div>
-                    <div class="score-breakdown">
-                        T-shirts: ${entry.tShirtValue} + Coins: ${entry.coinsRemaining}
-                    </div>
                 </td>
                 <td>
                     <span class="level-badge">Level ${entry.level}</span>

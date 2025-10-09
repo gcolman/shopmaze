@@ -282,8 +282,8 @@ export class WebSocketController {
     handleEndGameCommand() {
         try {
             console.log(">>>>>>handleEndGameCommand()");
-            // Only end the game if it's currently active
-            if (this.gameController.gameActive && !this.gameController.gameOver) {
+            // Only end the game if it's currently active and not already processed
+            if (this.gameController.gameActive && !this.gameController.gameOver && !this.gameController._endGameProcessed) {
                 this.gameController._endGame("Game ended remotely via WebSocket command.", 'admin_control');
                 
                 // Send success response
@@ -475,6 +475,16 @@ export class WebSocketController {
                         break;
                     }
                     
+                    // Special case: If order overlay is visible, allow admin end command to proceed
+                    // This transitions from "lives lost" state to "admin control" final end state
+                    if (isOrderOverlayVisible) {
+                        console.log('Order overlay visible - allowing admin end command to transition to final end state');
+                    } else if (this.gameController._endGameProcessed) {
+                        // Only check _endGameProcessed if order overlay is not visible
+                        console.log('End game already processed and no order overlay - ignoring duplicate end command');
+                        break;
+                    }
+                    
                     // Update server status
                     this.serverGameStatus = 'end';
                     
@@ -496,10 +506,11 @@ export class WebSocketController {
                         this.gameController.gameLoopId = null;
                     }
                     
-                    // If order overlay is visible, hide it first
+                    // If order overlay is visible, we need to transition to admin control properly
                     if (isOrderOverlayVisible) {
-                        console.log('Order overlay is visible, hiding it before ending game');
-                        this.gameController.uiManager.hideOrderConfirmation();
+                        console.log('Order overlay is visible, transitioning to admin control end state');
+                        // Don't hide the order confirmation here - let the admin control flow handle it
+                        // This ensures proper transition from order confirmation to admin control
                     }
                     
                     // Always trigger the admin control end game flow
@@ -786,22 +797,6 @@ export class WebSocketController {
             // Create PDF data URL from cleaned base64
             const pdfDataUrl = `data:${invoiceData.mimeType};base64,${cleanBase64}`;
             console.log("PDF Data URL created successfully. Total length:", pdfDataUrl.length);
-
-            // Also create a Blob URL as alternative (sometimes works better for large files)
-            let pdfBlobUrl = null;
-            try {
-                const byteCharacters = atob(cleanBase64);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: invoiceData.mimeType });
-                pdfBlobUrl = URL.createObjectURL(blob);
-                console.log("PDF Blob URL created successfully:", pdfBlobUrl);
-            } catch (blobError) {
-                console.error("Failed to create Blob URL:", blobError);
-            }
             
             // Create overlay container
             const overlay = document.createElement('div');
@@ -857,7 +852,7 @@ export class WebSocketController {
             header.appendChild(title);
             header.appendChild(closeButton);
             
-            // Create PDF container with multiple display options
+            // Create PDF container with Android-compatible display options
             const pdfContainer = document.createElement('div');
             pdfContainer.style.cssText = `
                 width: 90%;
@@ -867,23 +862,64 @@ export class WebSocketController {
                 border-radius: 4px;
                 background-color: white;
                 position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
             `;
             
-                   // Simple PDF display approach
-                   console.log('Displaying PDF with simple iframe');
-                   
-                   // Create simple iframe for PDF display
-                   const pdfIframe = document.createElement('iframe');
-                   pdfIframe.src = pdfBlobUrl || pdfDataUrl;
-                   pdfIframe.style.cssText = `
-                       width: 100%;
-                       height: 100%;
-                       border: none;
-                       border-radius: 4px;
-                   `;
+            // Detect if we're on Android
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            console.log('Android detected:', isAndroid);
             
-            // Add iframe to container
-            pdfContainer.appendChild(pdfIframe);
+            if (isAndroid) {
+                // Android PDF display - try multiple approaches
+                console.log('Using Android PDF display with fallback methods');
+                
+                // First try: Direct data URL in iframe (works on newer Android browsers)
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.src = pdfDataUrl;
+                pdfIframe.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                    border-radius: 4px;
+                `;
+                
+                // Add error handling for iframe
+                pdfIframe.onerror = () => {
+                    console.log('PDF iframe failed, trying download approach');
+                    this._showAndroidPdfDownloadFallback(invoiceData, pdfContainer);
+                };
+                
+                // Add load timeout to detect if PDF doesn't load
+                const loadTimeout = setTimeout(() => {
+                    console.log('PDF load timeout, trying download approach');
+                    this._showAndroidPdfDownloadFallback(invoiceData, pdfContainer);
+                }, 5000);
+                
+                pdfIframe.onload = () => {
+                    clearTimeout(loadTimeout);
+                    console.log('PDF loaded successfully in iframe');
+                };
+                
+                pdfContainer.appendChild(pdfIframe);
+                
+            } else {
+                // Desktop PDF display with iframe
+                console.log('Using desktop PDF display with iframe');
+                
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.src = pdfDataUrl;
+                pdfIframe.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                    border-radius: 4px;
+                `;
+                
+                pdfContainer.appendChild(pdfIframe);
+            }
             
             overlay.appendChild(header);
             overlay.appendChild(pdfContainer);
@@ -902,6 +938,537 @@ export class WebSocketController {
             console.error('Error creating PDF overlay:', error);
             throw new Error('Failed to create PDF overlay: ' + error.message);
         }
+    }
+
+    _showAndroidPdfDownloadFallback(invoiceData, pdfContainer) {
+        try {
+            console.log('Showing Android PDF with multiple methods');
+            
+            // Clear the container
+            pdfContainer.innerHTML = '';
+            
+            // Create container
+            const container = document.createElement('div');
+            container.style.cssText = `
+                text-align: center;
+                padding: 30px 20px;
+                color: #333;
+                font-family: Arial, sans-serif;
+                background: #f8f9fa;
+                border-radius: 8px;
+                margin: 20px;
+            `;
+            
+            // Create title
+            const title = document.createElement('h3');
+            title.textContent = 'Invoice Ready';
+            title.style.cssText = `
+                margin: 0 0 15px 0;
+                color: #28a745;
+                font-size: 20px;
+            `;
+            
+            // Create message
+            const message = document.createElement('p');
+            message.textContent = 'Your invoice PDF is ready. Try these options:';
+            message.style.cssText = `
+                margin: 0 0 20px 0;
+                color: #666;
+                font-size: 16px;
+            `;
+            
+            // Create button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                align-items: center;
+            `;
+            
+            // Method 1: Open PDF
+            const openButton = document.createElement('button');
+            openButton.textContent = 'Open PDF';
+            openButton.style.cssText = `
+                background: #007bff;
+                border: none;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 15px 30px;
+                border-radius: 8px;
+                cursor: pointer;
+                width: 200px;
+            `;
+            openButton.onclick = () => {
+                console.log('Open PDF button clicked');
+                this._downloadWithDataUrl(invoiceData);
+            };
+            
+            // Method 2: Download PDF
+            const downloadButton = document.createElement('button');
+            downloadButton.textContent = 'Download PDF';
+            downloadButton.style.cssText = `
+                background: #28a745;
+                border: none;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 15px 30px;
+                border-radius: 8px;
+                cursor: pointer;
+                width: 200px;
+            `;
+            downloadButton.onclick = () => {
+                console.log('Download PDF button clicked');
+                this._forceDownload(invoiceData);
+            };
+            
+            // Method 3: Share PDF (if available)
+            if (navigator.share) {
+                const shareButton = document.createElement('button');
+                shareButton.textContent = 'Share PDF';
+                shareButton.style.cssText = `
+                    background: #6c757d;
+                    border: none;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: bold;
+                    padding: 15px 30px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    width: 200px;
+                `;
+                shareButton.onclick = () => {
+                    console.log('Share PDF button clicked');
+                    this._sharePdf(invoiceData);
+                };
+                buttonContainer.appendChild(shareButton);
+            }
+            
+            // Assemble the UI
+            buttonContainer.appendChild(openButton);
+            buttonContainer.appendChild(downloadButton);
+            
+            container.appendChild(title);
+            container.appendChild(message);
+            container.appendChild(buttonContainer);
+            
+            pdfContainer.appendChild(container);
+            
+            console.log('Android PDF fallback with multiple methods displayed');
+            
+        } catch (error) {
+            console.error('Error creating Android PDF fallback:', error);
+        }
+    }
+    
+    _forceDownload(invoiceData) {
+        try {
+            console.log('Force download PDF:', invoiceData.filename);
+            
+            // Create data URL
+            const dataUrl = `data:${invoiceData.mimeType};base64,${invoiceData.base64Data}`;
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = invoiceData.filename;
+            link.style.display = 'none';
+            
+            // Add to document and click
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            setTimeout(() => {
+                if (link.parentNode) {
+                    link.parentNode.removeChild(link);
+                }
+            }, 1000);
+            
+            console.log('Force download completed');
+            
+        } catch (error) {
+            console.error('Force download error:', error);
+        }
+    }
+    
+    _sharePdf(invoiceData) {
+        try {
+            console.log('Sharing PDF:', invoiceData.filename);
+            
+            // Use Web Share API without blob (text-only sharing)
+            navigator.share({
+                title: 'Invoice PDF',
+                text: `Your invoice ${invoiceData.filename} is ready. Please download it using the download button.`,
+                url: window.location.href
+            }).then(() => {
+                console.log('PDF share info sent successfully');
+            }).catch(shareError => {
+                console.log('Web Share failed:', shareError);
+                // Fallback to download
+                this._forceDownload(invoiceData);
+            });
+            
+        } catch (error) {
+            console.error('Share PDF error:', error);
+            // Fallback to download
+            this._forceDownload(invoiceData);
+        }
+    }
+    
+    _downloadWithDataUrl(invoiceData) {
+        try {
+            console.log('Android-compatible PDF download:', invoiceData.filename);
+            
+            // Create data URL directly
+            const dataUrl = `data:${invoiceData.mimeType};base64,${invoiceData.base64Data}`;
+            
+            // Method 1: Try using location.href (similar to webview.loadDataWithBaseURL)
+            console.log('Method 1: Trying location.href approach');
+            try {
+                // Create a temporary window and navigate to the data URL
+                const tempWindow = window.open('', '_blank');
+                if (tempWindow) {
+                    tempWindow.location.href = dataUrl;
+                    console.log('PDF opened via location.href');
+                    return;
+                }
+            } catch (e) {
+                console.log('location.href failed:', e);
+            }
+            
+            // Method 2: Try using document.write (more compatible with Android WebView)
+            console.log('Method 2: Trying document.write approach');
+            try {
+                const newWindow = window.open('', '_blank');
+                if (newWindow) {
+                    newWindow.document.write(`
+                        <html>
+                            <head>
+                                <title>${invoiceData.filename}</title>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            </head>
+                            <body style="margin:0; padding:0;">
+                                <iframe src="${dataUrl}" 
+                                        style="width:100%; height:100vh; border:none;"
+                                        type="${invoiceData.mimeType}">
+                                </iframe>
+                            </body>
+                        </html>
+                    `);
+                    newWindow.document.close();
+                    console.log('PDF opened via document.write');
+                    return;
+                }
+            } catch (e) {
+                console.log('document.write failed:', e);
+            }
+            
+            // Method 3: Try Web Share API (if available on Android)
+            console.log('Method 3: Trying Web Share API');
+            if (navigator.share) {
+                try {
+                    navigator.share({
+                        title: 'Invoice PDF',
+                        text: `Your invoice ${invoiceData.filename} is ready. Please download it using the download button.`,
+                        url: window.location.href
+                    }).then(() => {
+                        console.log('PDF share info sent successfully');
+                        return;
+                    }).catch(shareError => {
+                        console.log('Web Share failed:', shareError);
+                    });
+                } catch (shareError) {
+                    console.log('Web Share API error:', shareError);
+                }
+            }
+            
+            // Method 4: Fallback to simple download link
+            console.log('Method 4: Fallback to download link');
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = invoiceData.filename;
+            link.style.display = 'none';
+            
+            // Add to document and click
+            document.body.appendChild(link);
+            link.click();
+            
+            // Clean up
+            setTimeout(() => {
+                if (link.parentNode) {
+                    link.parentNode.removeChild(link);
+                }
+            }, 1000);
+            
+            console.log('Fallback download completed');
+            
+        } catch (error) {
+            console.error('Android PDF download error:', error);
+        }
+    }
+    
+    _showPdfJsViewer(invoiceData, pdfContainer) {
+        try {
+            console.log('Creating PDF.js viewer');
+            
+            // Create container for PDF.js viewer
+            const viewerContainer = document.createElement('div');
+            viewerContainer.style.cssText = `
+                width: 100%;
+                height: 600px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin: 20px 0;
+                background: #f8f9fa;
+                position: relative;
+            `;
+            
+            // Create canvas for PDF rendering
+            const canvas = document.createElement('canvas');
+            canvas.id = 'pdf-canvas';
+            canvas.style.cssText = `
+                width: 100%;
+                height: 100%;
+                display: block;
+            `;
+            
+            // Create loading message
+            const loadingDiv = document.createElement('div');
+            loadingDiv.textContent = 'Loading PDF...';
+            loadingDiv.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #666;
+                font-size: 16px;
+            `;
+            
+            // Create download button
+            const downloadButton = document.createElement('button');
+            downloadButton.textContent = 'Download PDF';
+            downloadButton.style.cssText = `
+                background: #28a745;
+                border: none;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin: 10px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            `;
+            
+            downloadButton.onclick = () => {
+                this._simpleAndroidDownload(invoiceData);
+            };
+            
+            // Assemble viewer
+            viewerContainer.appendChild(loadingDiv);
+            viewerContainer.appendChild(canvas);
+            
+            pdfContainer.appendChild(viewerContainer);
+            pdfContainer.appendChild(downloadButton);
+            
+            // Load PDF with PDF.js
+            this._loadPdfWithPdfJs(invoiceData, canvas, loadingDiv);
+            
+        } catch (error) {
+            console.error('Error creating PDF.js viewer:', error);
+            this._showBasicAndroidFallback(invoiceData, pdfContainer);
+        }
+    }
+    
+    _loadPdfWithPdfJs(invoiceData, canvas, loadingDiv) {
+        try {
+            console.log('Loading PDF with PDF.js');
+            
+            // Create data URL
+            const dataUrl = `data:${invoiceData.mimeType};base64,${invoiceData.base64Data}`;
+            
+            // Load PDF document
+            pdfjsLib.getDocument(dataUrl).promise.then(function(pdf) {
+                console.log('PDF loaded successfully');
+                
+                // Hide loading message
+                loadingDiv.style.display = 'none';
+                
+                // Render first page
+                pdf.getPage(1).then(function(page) {
+                    const scale = 1.5;
+                    const viewport = page.getViewport({ scale: scale });
+                    
+                    // Set canvas dimensions
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    // Render page
+                    const renderContext = {
+                        canvasContext: canvas.getContext('2d'),
+                        viewport: viewport
+                    };
+                    
+                    page.render(renderContext).promise.then(function() {
+                        console.log('PDF page rendered successfully');
+                    });
+                });
+            }).catch(function(error) {
+                console.error('Error loading PDF with PDF.js:', error);
+                loadingDiv.textContent = 'Error loading PDF';
+                loadingDiv.style.color = '#dc3545';
+            });
+            
+        } catch (error) {
+            console.error('Error in PDF.js loading:', error);
+            loadingDiv.textContent = 'Error loading PDF';
+            loadingDiv.style.color = '#dc3545';
+        }
+    }
+    
+    _showBasicAndroidFallback(invoiceData, pdfContainer) {
+        try {
+            console.log('Showing basic Android fallback');
+            
+            // Clear the container
+            pdfContainer.innerHTML = '';
+            
+            // Create simple container
+            const container = document.createElement('div');
+            container.style.cssText = `
+                text-align: center;
+                padding: 40px 20px;
+                color: #333;
+                font-family: Arial, sans-serif;
+                background: #f8f9fa;
+                border-radius: 8px;
+                margin: 20px;
+            `;
+            
+            // Create title
+            const title = document.createElement('h3');
+            title.textContent = 'Invoice Ready';
+            title.style.cssText = `
+                margin: 0 0 15px 0;
+                color: #28a745;
+                font-size: 20px;
+            `;
+            
+            // Create message
+            const message = document.createElement('p');
+            message.textContent = 'Your invoice PDF is ready. Tap the link below to download it.';
+            message.style.cssText = `
+                margin: 0 0 20px 0;
+                color: #666;
+                font-size: 16px;
+            `;
+            
+            // Create simple download link (not button)
+            const downloadLink = document.createElement('a');
+            downloadLink.textContent = 'Download Invoice PDF';
+            downloadLink.href = `data:${invoiceData.mimeType};base64,${invoiceData.base64Data}`;
+            downloadLink.download = invoiceData.filename;
+            downloadLink.style.cssText = `
+                display: inline-block;
+                background: #007bff;
+                color: white;
+                text-decoration: none;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 15px 30px;
+                border-radius: 8px;
+                margin: 10px;
+            `;
+            
+            // Assemble the simple UI
+            container.appendChild(title);
+            container.appendChild(message);
+            container.appendChild(downloadLink);
+            
+            pdfContainer.appendChild(container);
+            
+            console.log('Basic Android PDF fallback displayed');
+            
+        } catch (error) {
+            console.error('Error creating basic Android PDF fallback:', error);
+        }
+    }
+    
+    _showSimpleAndroidFallback(invoiceData, pdfContainer) {
+        try {
+            console.log('Showing simple Android fallback');
+            
+            // Clear the container
+            pdfContainer.innerHTML = '';
+            
+            // Create simple container
+            const container = document.createElement('div');
+            container.style.cssText = `
+                text-align: center;
+                padding: 40px 20px;
+                color: #333;
+                font-family: Arial, sans-serif;
+            `;
+            
+            // Create title
+            const title = document.createElement('h3');
+            title.textContent = 'Invoice Ready';
+            title.style.cssText = `
+                margin: 0 0 20px 0;
+                color: #28a745;
+                font-size: 20px;
+            `;
+            
+            // Create simple download button
+            const downloadButton = document.createElement('button');
+            downloadButton.textContent = 'Download PDF';
+            downloadButton.style.cssText = `
+                background: #28a745;
+                border: none;
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 20px 40px;
+                border-radius: 8px;
+                cursor: pointer;
+                margin: 10px;
+            `;
+            
+            // Simple click handler
+            downloadButton.onclick = () => {
+                console.log('Download button clicked');
+                this._simpleAndroidDownload(invoiceData);
+            };
+            
+            // Assemble the simple UI
+            container.appendChild(title);
+            container.appendChild(downloadButton);
+            
+            pdfContainer.appendChild(container);
+            
+        } catch (error) {
+            console.error('Error creating simple Android fallback:', error);
+        }
+    }
+    
+    _simpleAndroidDownload(invoiceData) {
+        // Use the new data URL method
+        this._downloadWithDataUrl(invoiceData);
+    }
+    
+    _downloadPdf(invoiceData) {
+        // Use simple Android download method
+        this._simpleAndroidDownload(invoiceData);
+    }
+    
+    _tryViewPdfInBrowser(invoiceData) {
+        // Use simple Android download method
+        this._simpleAndroidDownload(invoiceData);
     }
 
     hidePdfOverlay() {

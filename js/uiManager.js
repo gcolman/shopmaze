@@ -1379,7 +1379,7 @@ export class UIManager {
         };
     }
 
-    // Generate silly user ID from two random words
+    // Generate silly user ID from two random words with duplicate prevention
     generateSillyUserId() {
         const adjectives = [
             'Bouncy', 'Giggling', 'Wiggly', 'Sparkly', 'Fluffy', 'Zesty', 'Bubbly', 'Quirky',
@@ -1400,7 +1400,42 @@ export class UIManager {
             'Fluffy', 'Foolish', 'Fragile', 'Free', 'Friendly', 'Frightened', 'Funny', 'Generous',
             'Gentle', 'Giant', 'Gorgeous', 'Graceful', 'Grand', 'Grateful', 'Green', 'Grumpy',
             'Happy', 'Hard', 'Harsh', 'Healthy', 'Heavy', 'Helpful', 'Hilarious', 'Hot',
-            'Huge', 'Humble', 'Hungry', 'Icy'
+            'Huge', 'Humble', 'Hungry', 'Icy',
+            'Ideal', 'Imaginative', 'Immaculate', 'Immense', 'Important', 'Incredible', 'Innocent', 'Intelligent',
+            'Interesting', 'Invisible', 'Inviting', 'Irritable', 'Jagged', 'Jittery', 'Joyful', 'Juicy',
+            'Kind', 'Lame', 'Large', 'Lively', 'Lonely', 'Long', 'Loud', 'Lovely',
+            'Lucky', 'Magnificent', 'Majestic', 'Meaty', 'Messy', 'Mighty', 'Misty', 'Moody',
+            'Motivated', 'Mysterious', 'Nervous', 'New', 'Nimble', 'Noisy', 'Odd', 'Old',
+            'Optimistic', 'Orange', 'Outstanding', 'Pale', 'Peaceful', 'Perfect', 'Plain', 'Plump',
+            'Polite', 'Powerful', 'Pretty', 'Proud', 'Puzzled', 'Quiet', 'Quick', 'Rainy',
+            'Random', 'Rapid', 'Rare', 'Red', 'Relaxed', 'Reliable', 'Rich', 'Rough',
+            'Round', 'Royal', 'Sad', 'Safe', 'Salty', 'Scary', 'Secretive', 'Selfish',
+            'Shallow', 'Sharp', 'Shiny', 'Short', 'Shy', 'Silly', 'Simple', 'Small',
+            'Smooth', 'Soft', 'Sour', 'Spicy', 'Spiritual', 'Spooky', 'Steep', 'Sticky',
+            'Stormy', 'Strange', 'Strong', 'Stunning', 'Sturdy', 'Sweet', 'Tall', 'Tame',
+            'Tangy', 'Tense', 'Terrible', 'Terrific', 'Thirsty', 'Thoughtful', 'Tired', 'Tough',
+            'Tranquil', 'Tremendous', 'Ugly', 'Uncommon', 'Unique', 'Unusual', 'Upset', 'Useless',
+            'Valuable', 'Vast', 'Vicious', 'Vibrant', 'Vivid', 'Warm', 'Weak', 'Wealthy',
+            'Weary', 'Wet', 'Whiny', 'White', 'Wild', 'Wise', 'Wobbly', 'Wonderful',
+            'Wooden', 'Worried', 'Yellow', 'Young', 'Zany', 'Zealous', 'Zesty', 'Zippy',
+            'Abundant', 'Acceptable', 'Accessible', 'Accurate', 'Acute', 'Adroit', 'Aesthetic', 'Agreeable',
+            'Aloof', 'Amusing', 'Appealing', 'Appropriate', 'Ardent', 'Articulate', 'Assertive', 'Authentic',
+            'Awesome', 'Awkward', 'Barren', 'Beloved', 'Benign', 'Best', 'Biased', 'Blissful',
+            'Blushing', 'Boisterous', 'Boring', 'Boundless', 'Brawny', 'Breathtaking', 'Brittle', 'Bumpy',
+            'Burly', 'Candid', 'Capricious', 'Careful', 'Carefree', 'Casual', 'Cavalier', 'Challenging',
+            'Chaste', 'Chic', 'Chilly', 'Chivalrous', 'Civil', 'Clammy', 'Clumsy', 'Coherent',
+            'Commendable', 'Compassionate', 'Competitive', 'Complacent', 'Complex', 'Conscientious', 'Conservative', 'Consistent',
+            'Constricting', 'Contradictory', 'Cooperative', 'Corrupt', 'Courteous', 'Cowardly', 'Crafty', 'Credible',
+            'Crispy', 'Crucial', 'Cumbersome', 'Dainty', 'Dashing', 'Dauntless', 'Deceitful', 'Decisive',
+            'Defenseless', 'Defiant', 'Delectable', 'Delicate', 'Desirable', 'Destructive', 'Determined', 'Devoted',
+            'Dignified', 'Diplomatic', 'Discreet', 'Dismal', 'Distant', 'Diverse', 'Doubtful', 'Dramatic',
+            'Dynamic', 'Ebullient', 'Eclectic', 'Economical', 'Educated', 'Eerie', 'Effervescent', 'Efficient',
+            'Elaborate', 'Electrifying', 'Eloquent', 'Elusive', 'Empathetic', 'Encouraging', 'Energetic', 'Enigmatic',
+            'Enthusiastic', 'Epic', 'Erratic', 'Essential', 'Ethereal', 'Exact', 'Exuberant', 'Fabulous',
+            'Facetious', 'Fanciful', 'Ferocious', 'Fierce', 'Fiery', 'Flaky', 'Flamboyant', 'Fleeting',
+            'Flexible', 'Flowing', 'Fluent', 'Forlorn', 'Formidable', 'Frail', 'Frank', 'Frugal',
+            'Fulsome', 'Gallant', 'Garrulous', 'Gaudy', 'Giddy', 'Glamorous', 'Gleaming', 'Glittering',
+            'Glorious', 'Glowing', 'Golden', 'Gorgeous', 'Gracious', 'Gravely', 'Greedy', 'Gregarious'
         ];
         const nouns = [
             'Penguin', 'Llama', 'Pineapple', 'Butterfly', 'Rainbow', 'Unicorn', 'Dragon', 'Phoenix',
@@ -1426,10 +1461,36 @@ export class UIManager {
             'Rabbit', 'Raccoon'
         ];
 
-        const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+        // Get or initialize used userIds storage
+        const storageKey = 'redhat-quest-used-userids';
+        let usedUserIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
         
-        return `${randomAdjective}${randomNoun}`;
+        // Maximum attempts to prevent infinite loops
+        const maxAttempts = 100;
+        let attempts = 0;
+        
+        while (attempts < maxAttempts) {
+            const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+            const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+            const userId = `${randomAdjective}${randomNoun}`;
+            
+            // Check if this userId is already used
+            if (!usedUserIds.includes(userId)) {
+                // Add to used list and save to localStorage
+                usedUserIds.push(userId);
+                localStorage.setItem(storageKey, JSON.stringify(usedUserIds));
+                
+                console.log(`Generated unique userId: ${userId} (attempt ${attempts + 1})`);
+                return userId;
+            }
+            
+            attempts++;
+        }
+        
+        // If we've exhausted all attempts, fall back to timestamp-based ID
+        const fallbackId = `Player${Date.now().toString().slice(-6)}`;
+        console.warn(`Could not generate unique silly userId after ${maxAttempts} attempts, using fallback: ${fallbackId}`);
+        return fallbackId;
     }
 
     showEmailError(message) {
@@ -1459,7 +1520,38 @@ export class UIManager {
     showRegistration() {
         if (this.elements.registrationOverlay) {
             this.elements.registrationOverlay.style.display = 'flex';
+            
+            // Hide the email input field from the user
+            if (this.elements.emailInput) {
+                this.elements.emailInput.style.display = 'none';
+            }
+            
+            // Hide the email label as well
+            const emailLabel = document.querySelector('label[for="emailInput"]');
+            if (emailLabel) {
+                emailLabel.style.display = 'none';
+            }
+            
+            // Hide the email error div
+            if (this.elements.emailError) {
+                this.elements.emailError.style.display = 'none';
+            }
+            
+            // Pre-populate with dummy email for internal processing
+            if (this.elements.emailInput) {
+                const dummyEmail = this.generateDummyEmail();
+                this.elements.emailInput.value = dummyEmail;
+                console.log('Pre-populated dummy email:', dummyEmail);
+            }
         }
+    }
+
+    // Generate a dummy email address
+    generateDummyEmail() {
+        const domains = ['example.com', 'demo.local.com', 'game.local.com', 'player.local.com', 'user.local.com'];
+        const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+        const randomNumber = Math.floor(Math.random() * 10000);
+        return `player${randomNumber}@${randomDomain}`;
     }
 
     hideRegistration() {

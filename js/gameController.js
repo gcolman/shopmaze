@@ -506,7 +506,25 @@ export class GameController {
     }
 
     _endGame(message, reason = 'normal') {
+        // Check if we're transitioning from order confirmation to admin control
+        const orderOverlayElement = document.getElementById('orderConfirmationOverlay');
+        const isOrderOverlayVisible = orderOverlayElement && orderOverlayElement.style.display !== 'none';
+        
+        // Allow transition from order confirmation to admin control end state
+        const isTransitioningToAdminControl = reason === 'admin_control' && isOrderOverlayVisible && this.gameOver;
+        
+        // Prevent duplicate end game calls, but allow admin control transition
+        if (this.gameOver && this._endGameProcessed && !isTransitioningToAdminControl) {
+            console.log('End game already processed, ignoring duplicate call');
+            return;
+        }
+        
+        if (isTransitioningToAdminControl) {
+            console.log('Transitioning from order confirmation to admin control end state');
+        }
+        
         this.gameOver = true;
+        this._endGameProcessed = true; // Mark that end game has been processed
         this.gameActive = false;
         
         if (this.gameLoopId) {
@@ -569,6 +587,7 @@ export class GameController {
     _restartGame() {
         // Reset all game state
         this.gameOver = false;
+        this._endGameProcessed = false; // Reset end game processed flag
         this.gameActive = true;
         this.isPaused = false;
         this.currentLevelIndex = 0;
@@ -648,21 +667,19 @@ export class GameController {
     }
 
     async _submitOrderAndShowConfirmation() {
-        // First, ensure current session T-shirts are added to the collection
-        const state = this.gameObjectManager.getCurrentState();
-        console.log('Admin end game: Current shopping basket:', state.shoppingBasket);
-        console.log('Admin end game: Shopping basket length:', state.shoppingBasket ? state.shoppingBasket.length : 'undefined');
+        // Check if we're transitioning from order confirmation overlay
+        const orderOverlayElement = document.getElementById('orderConfirmationOverlay');
+        const isOrderOverlayVisible = orderOverlayElement && orderOverlayElement.style.display !== 'none';
         
-        if (state.shoppingBasket && state.shoppingBasket.length > 0) {
-            console.log(`Admin end game: Adding ${state.shoppingBasket.length} T-shirts to persistent collection`);
-            this.tshirtCollection.addSessionTShirts(state.shoppingBasket);
-            console.log(`Admin end game: Finished adding T-shirts to persistent collection`);
-        } else {
-            console.log('Admin end game: No T-shirts in shopping basket to add to collection');
+        if (isOrderOverlayVisible) {
+            console.log('Admin end game: Transitioning from order confirmation overlay');
+            // Hide the existing order confirmation overlay
+            this.uiManager.hideOrderConfirmation();
         }
         
-        // Get accumulated T-shirts after adding current session
+        // Get accumulated T-shirts (they should already be added by _endGame)
         const accumulatedTShirts = this.tshirtCollection.getGroupedCollection();
+        console.log('Admin end game: Using accumulated T-shirts:', accumulatedTShirts);
         
         if (accumulatedTShirts.length === 0) {
             console.log('Admin end game: No T-shirts collected, showing no items message');
@@ -713,11 +730,14 @@ export class GameController {
         this.gameActive = false;
         this.inputHandler.stopContinuousMovement();
         
-        this.uiManager.showAdminControlOrderConfirmation(
-            accumulatedTShirts,
-            () => this._closeAdminOrderConfirmation(),
-            null // No place order button since it's already submitted
-        );
+        // Add a small delay to ensure DOM updates are complete
+        setTimeout(() => {
+            this.uiManager.showAdminControlOrderConfirmation(
+                accumulatedTShirts,
+                () => this._closeAdminOrderConfirmation(),
+                null // No place order button since it's already submitted
+            );
+        }, 100);
     }
 
     _showNoItemsMessage() {
@@ -725,12 +745,15 @@ export class GameController {
         this.gameActive = false;
         this.inputHandler.stopContinuousMovement();
         
-        // Use empty basket to trigger the "no items collected" message
-        this.uiManager.showAdminControlOrderConfirmation(
-            [], // Empty basket
-            () => this._closeNoItemsMessage(),
-            null // No place order button
-        );
+        // Add a small delay to ensure DOM updates are complete
+        setTimeout(() => {
+            // Use empty basket to trigger the "no items collected" message
+            this.uiManager.showAdminControlOrderConfirmation(
+                [], // Empty basket
+                () => this._closeNoItemsMessage(),
+                null // No place order button
+            );
+        }, 100);
     }
 
     _closeNoItemsMessage() {
@@ -895,6 +918,7 @@ export class GameController {
         
         // Reset game state like _restartGame but don't start immediately
         this.gameOver = false;
+        this._endGameProcessed = false; // Reset end game processed flag
         this.isPaused = true;  // Start paused
         this.gameActive = false;
         this.currentLevelIndex = 0;
